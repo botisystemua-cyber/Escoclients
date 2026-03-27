@@ -4,7 +4,6 @@ import {
   FileText, Scale, Clock, MessageSquare, Image, CreditCard, Hash, Navigation,
 } from 'lucide-react';
 import type { Delivery, ItemStatus } from '../types';
-import { StatusBadge } from './StatusBadge';
 import { useApp } from '../store/useAppStore';
 import { updateDeliveryStatus } from '../api';
 
@@ -12,6 +11,20 @@ interface Props {
   delivery: Delivery;
   globalIndex: number;
 }
+
+const statusColors: Record<ItemStatus, string> = {
+  pending: 'border-l-amber-400',
+  'in-progress': 'border-l-blue-500',
+  completed: 'border-l-green-500',
+  cancelled: 'border-l-red-500',
+};
+
+const statusLabels: Record<ItemStatus, { text: string; color: string }> = {
+  pending: { text: 'Очікує', color: 'bg-amber-50 text-amber-700' },
+  'in-progress': { text: 'В роботі', color: 'bg-blue-50 text-blue-700' },
+  completed: { text: 'Готово', color: 'bg-green-50 text-green-700' },
+  cancelled: { text: 'Скасов.', color: 'bg-red-50 text-red-700' },
+};
 
 export function DeliveryCard({ delivery, globalIndex }: Props) {
   const { getStatus, setStatus, hiddenCols, driverName, currentSheet, showToast } = useApp();
@@ -26,20 +39,18 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
   const payStatusVal = delivery.paymentStatus || delivery.payStatus || '';
   const statusVal = delivery.parcelStatus || delivery.status || '';
   const canUndo = status === 'completed' || status === 'cancelled';
+  const sl = statusLabels[status];
 
   const handleStatus = async (newStatus: ItemStatus) => {
     setStatus(delivery._statusKey, newStatus);
     try {
       await updateDeliveryStatus(driverName, currentSheet, delivery, newStatus);
-      const labels: Record<string, string> = { 'in-progress': 'В процесі', completed: 'Готово!', pending: 'Очікує' };
-      showToast(labels[newStatus] || newStatus);
-    } catch (err) {
-      showToast('Помилка: ' + (err as Error).message);
-    }
+      showToast(statusLabels[newStatus].text + '!');
+    } catch (err) { showToast('Помилка: ' + (err as Error).message); }
   };
 
   const handleCancel = async () => {
-    if (!cancelReason.trim()) { showToast('Введи причину скасування'); return; }
+    if (!cancelReason.trim()) { showToast('Введи причину'); return; }
     setStatus(delivery._statusKey, 'cancelled');
     setShowCancel(false);
     try {
@@ -69,106 +80,85 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
   };
 
   return (
-    <div className="bg-card rounded-2xl shadow-sm border border-border overflow-hidden">
-      {/* Main content */}
-      <div className="p-5">
-        {/* Header row */}
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-brand-light text-brand flex items-center justify-center text-base font-black shrink-0">
+    <div className={`bg-card rounded-xl border border-border ${statusColors[status]} border-l-[5px] overflow-hidden`}>
+      {/* Compact header */}
+      <div className="px-3 pt-3 pb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-dark text-white flex items-center justify-center text-xs font-black shrink-0">
             {globalIndex + 1}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="font-bold text-text text-base leading-snug">
+            <div className="font-bold text-text text-[13px] leading-tight truncate">
               {show('id') && <span className="text-text-secondary">#{delivery.internalNumber} </span>}
               {show('address') && delivery.address}
             </div>
             {show('name') && delivery.name && (
-              <div className="text-sm text-text-secondary mt-1">{delivery.name}</div>
-            )}
-            {show('vo') && delivery.vo && (
-              <div className="text-sm text-text-secondary">{delivery.vo}</div>
+              <div className="text-xs text-text-secondary truncate">{delivery.name}</div>
             )}
           </div>
-          <StatusBadge status={status} />
+          <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold ${sl.color}`}>{sl.text}</span>
         </div>
 
-        {/* Info badges */}
-        <div className="flex flex-wrap gap-2 mt-4">
-          {show('phone') && delivery.phone && (
-            <InfoChip icon={Phone} color="green">{delivery.phone}</InfoChip>
-          )}
-          {show('price') && priceVal && (
-            <InfoChip icon={CreditCard} color="green" bold>€{priceVal}</InfoChip>
-          )}
-          {show('ttn') && delivery.ttn && (
-            <InfoChip icon={FileText} color="red">ТТН: {delivery.ttn}</InfoChip>
-          )}
-          {show('weight') && delivery.weight && (
-            <InfoChip icon={Scale} color="gray">{delivery.weight} кг</InfoChip>
-          )}
-          {show('direction') && delivery.direction && (
-            <InfoChip icon={Navigation} color="purple">{delivery.direction}</InfoChip>
-          )}
-          {show('timing') && delivery.timing && (
-            <InfoChip icon={Clock} color="gray">{delivery.timing}</InfoChip>
-          )}
-          {show('status') && statusVal && (
-            <InfoChip icon={Hash} color="blue">{statusVal}</InfoChip>
-          )}
-          {show('payment') && paymentVal && (
-            <InfoChip icon={CreditCard} color="gray">{paymentVal}</InfoChip>
-          )}
+        {/* Compact chips */}
+        <div className="flex flex-wrap gap-1 mt-2">
+          {show('phone') && delivery.phone && <Chip icon={Phone} color="green">{delivery.phone}</Chip>}
+          {show('price') && priceVal && <Chip icon={CreditCard} color="green" bold>€{priceVal}</Chip>}
+          {show('ttn') && delivery.ttn && <Chip icon={FileText} color="red">ТТН: {delivery.ttn}</Chip>}
+          {show('weight') && delivery.weight && <Chip icon={Scale} color="gray">{delivery.weight}кг</Chip>}
+          {show('direction') && delivery.direction && <Chip icon={Navigation} color="purple">{delivery.direction}</Chip>}
+          {show('timing') && delivery.timing && <Chip icon={Clock} color="gray">{delivery.timing}</Chip>}
+          {show('status') && statusVal && <Chip icon={Hash} color="blue">{statusVal}</Chip>}
+          {show('payment') && paymentVal && <Chip icon={CreditCard} color="gray">{paymentVal}</Chip>}
           {show('payStatus') && payStatusVal && (
-            <InfoChip icon={CreditCard} color={payStatusVal === 'Оплачено' ? 'green' : 'red'} bold>{payStatusVal}</InfoChip>
+            <Chip icon={CreditCard} color={payStatusVal === 'Оплачено' ? 'green' : 'red'} bold>{payStatusVal}</Chip>
           )}
         </div>
-
         {show('note') && delivery.note?.trim() && (
-          <div className="flex items-start gap-2 mt-3 text-sm text-text-secondary">
-            <MessageSquare className="w-4 h-4 mt-0.5 shrink-0" />
-            <span>{delivery.note}</span>
+          <div className="flex items-start gap-1 mt-1.5 text-[11px] text-text-secondary leading-tight">
+            <MessageSquare className="w-3 h-3 mt-0.5 shrink-0" /><span className="truncate">{delivery.note}</span>
           </div>
         )}
+      </div>
 
-        {/* Action buttons */}
-        <div className="grid grid-cols-3 gap-3 mt-5">
-          <BigButton icon={Phone} label="Дзвонити" color="green" onClick={() => { window.location.href = `tel:${delivery.phone}`; }} />
-          <BigButton icon={MapPin} label="Карта" color="blue" onClick={navigate} />
-          <BigButton icon={expanded ? ChevronUp : ChevronDown} label="Деталі" color="gray" onClick={() => setExpanded(!expanded)} />
-        </div>
-
-        {/* Status buttons */}
-        <div className="grid grid-cols-4 gap-2 mt-3">
-          <StatusBtn icon={RotateCw} label="В роботу" color="blue" onClick={() => handleStatus('in-progress')} />
-          <StatusBtn icon={CheckCircle2} label="Готово" color="green" onClick={() => handleStatus('completed')} />
-          <StatusBtn icon={XCircle} label="Скасувати" color="red" onClick={() => { setShowCancel(true); setExpanded(true); }} />
-          <StatusBtn icon={Undo2} label="Відміна" color="gray" onClick={handleUndo} disabled={!canUndo} />
+      {/* Actions row — compact */}
+      <div className="px-3 pb-2">
+        <div className="flex gap-1.5">
+          <ActBtn icon={Phone} label="Дзвонити" onClick={() => { window.location.href = `tel:${delivery.phone}`; }} />
+          <ActBtn icon={MapPin} label="Карта" onClick={navigate} />
+          <ActBtn icon={expanded ? ChevronUp : ChevronDown} label="Деталі" onClick={() => setExpanded(!expanded)} />
         </div>
       </div>
 
-      {/* Expanded details */}
+      {/* Status buttons — single row */}
+      <div className="flex border-t border-border">
+        <SBtn icon={RotateCw} color="text-blue-600 bg-blue-50" onClick={() => handleStatus('in-progress')} />
+        <SBtn icon={CheckCircle2} color="text-green-600 bg-green-50" onClick={() => handleStatus('completed')} />
+        <SBtn icon={XCircle} color="text-red-500 bg-red-50" onClick={() => { setShowCancel(true); setExpanded(true); }} />
+        <SBtn icon={Undo2} color="text-gray-400 bg-gray-50" onClick={handleUndo} disabled={!canUndo} last />
+      </div>
+
+      {/* Expanded */}
       {expanded && (
-        <div className="border-t border-border bg-bg/50 p-5 space-y-3">
-          <Detail label="ПІБ" value={delivery.name} />
-          <Detail label="Номер / ІД" value={`${delivery.internalNumber}${delivery.id ? ' / ' + delivery.id : ''}`} />
-          {delivery.vo && <Detail label="ВО" value={delivery.vo} />}
-          <Detail label="Адреса" value={delivery.address} />
-          <Detail label="ТТН" value={delivery.ttn} />
-          <Detail label="Вага" value={delivery.weight} />
-          {delivery.direction && <Detail label="Напрямок" value={delivery.direction} />}
-          <Detail label="Телефон" value={delivery.phone} />
-          {delivery.registrarPhone && <Detail label="Тел. Реєстратора" value={delivery.registrarPhone} />}
-          {priceVal && <Detail label="Сума" value={`€${priceVal}`} />}
-          {paymentVal && <Detail label="Оплата" value={paymentVal} />}
-          {payStatusVal && <Detail label="Статус оплати" value={payStatusVal} highlight={payStatusVal === 'Оплачено' ? 'green' : 'red'} />}
-          {delivery.timing && <Detail label="Таймінг" value={delivery.timing} />}
-          {delivery.createdAt && <Detail label="Дата оформлення" value={delivery.createdAt} />}
-          {delivery.receiveDate && <Detail label="Дата отримання" value={delivery.receiveDate} />}
-          {delivery.smsNote?.trim() && <Detail label="SMS" value={delivery.smsNote} />}
+        <div className="border-t border-border bg-bg p-3 space-y-2">
+          <Det label="ПІБ" value={delivery.name} />
+          <Det label="Номер" value={`${delivery.internalNumber}${delivery.id ? ' / ' + delivery.id : ''}`} />
+          {delivery.vo && <Det label="ВО" value={delivery.vo} />}
+          <Det label="Адреса" value={delivery.address} />
+          <Det label="ТТН" value={delivery.ttn} />
+          <Det label="Вага" value={delivery.weight} />
+          {delivery.direction && <Det label="Напрямок" value={delivery.direction} />}
+          <Det label="Телефон" value={delivery.phone} />
+          {delivery.registrarPhone && <Det label="Тел. Реєстр." value={delivery.registrarPhone} />}
+          {priceVal && <Det label="Сума" value={`€${priceVal}`} />}
+          {paymentVal && <Det label="Оплата" value={paymentVal} />}
+          {payStatusVal && <Det label="Статус оплати" value={payStatusVal} />}
+          {delivery.timing && <Det label="Таймінг" value={delivery.timing} />}
+          {delivery.createdAt && <Det label="Дата оформл." value={delivery.createdAt} />}
+          {delivery.receiveDate && <Det label="Дата отрим." value={delivery.receiveDate} />}
+          {delivery.smsNote?.trim() && <Det label="SMS" value={delivery.smsNote} />}
           {delivery.photo?.startsWith('http') && (
-            <a href={delivery.photo} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-2 text-sm text-blue-600 font-semibold hover:underline mt-2">
-              <Image className="w-4 h-4" /> Відкрити фото
+            <a href={delivery.photo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold">
+              <Image className="w-3.5 h-3.5" /> Відкрити фото
             </a>
           )}
         </div>
@@ -176,19 +166,13 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
 
       {/* Cancel reason */}
       {showCancel && (
-        <div className="border-t border-red-200 bg-red-50 p-5">
-          <textarea
-            value={cancelReason}
-            onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Причина скасування..."
-            autoFocus
-            className="w-full px-4 py-3 bg-white border-2 border-red-200 rounded-2xl text-text text-sm resize-y min-h-[80px] focus:outline-none focus:border-red-400 placeholder-text-secondary/40"
-          />
-          <button
-            onClick={handleCancel}
-            className="w-full mt-3 py-3.5 bg-red-500 text-white font-bold rounded-2xl text-sm hover:bg-red-600 transition-colors cursor-pointer"
-          >
-            Підтвердити скасування
+        <div className="border-t border-red-200 bg-red-50 p-3">
+          <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
+            placeholder="Причина скасування..." autoFocus
+            className="w-full px-3 py-2.5 bg-white border border-red-200 rounded-xl text-text text-sm resize-none h-16 focus:outline-none focus:border-red-400" />
+          <button onClick={handleCancel}
+            className="w-full mt-2 py-2.5 bg-red-500 text-white font-bold rounded-xl text-xs cursor-pointer">
+            Підтвердити
           </button>
         </div>
       )}
@@ -196,64 +180,44 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
   );
 }
 
-// ---- Sub-components ----
-
-function InfoChip({ icon: Icon, color, bold, children }: {
-  icon: typeof Phone; color: string; bold?: boolean; children: React.ReactNode;
-}) {
-  const colors: Record<string, string> = {
-    green: 'bg-green-50 text-green-700',
-    red: 'bg-red-50 text-red-700',
-    blue: 'bg-blue-50 text-blue-700',
-    purple: 'bg-purple-50 text-purple-700',
-    gray: 'bg-gray-100 text-gray-600',
+function Chip({ icon: Icon, color, bold, children }: { icon: typeof Phone; color: string; bold?: boolean; children: React.ReactNode }) {
+  const c: Record<string, string> = {
+    green: 'bg-green-50 text-green-700', red: 'bg-red-50 text-red-700', blue: 'bg-blue-50 text-blue-700',
+    purple: 'bg-purple-50 text-purple-700', gray: 'bg-gray-100 text-gray-600',
   };
   return (
-    <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs ${bold ? 'font-bold' : 'font-semibold'} ${colors[color]}`}>
-      <Icon className="w-3.5 h-3.5" />{children}
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] ${bold ? 'font-bold' : 'font-semibold'} ${c[color]}`}>
+      <Icon className="w-3 h-3" />{children}
     </span>
   );
 }
 
-function BigButton({ icon: Icon, label, color, onClick }: {
-  icon: typeof Phone; label: string; color: string; onClick: () => void;
-}) {
-  const colors: Record<string, string> = {
-    green: 'bg-green-50 text-green-700 active:bg-green-100',
-    blue: 'bg-blue-50 text-blue-700 active:bg-blue-100',
-    gray: 'bg-gray-100 text-gray-600 active:bg-gray-200',
-  };
+function ActBtn({ icon: Icon, label, onClick }: { icon: typeof Phone; label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 py-3.5 rounded-2xl font-semibold text-xs transition-all cursor-pointer active:scale-95 ${colors[color]}`}>
-      <Icon className="w-5 h-5" />{label}
+    <button onClick={onClick}
+      className="flex-1 flex items-center justify-center gap-1 py-2 bg-bg rounded-lg text-[11px] font-semibold text-text-secondary hover:text-brand transition-colors cursor-pointer active:scale-95">
+      <Icon className="w-3.5 h-3.5" />{label}
     </button>
   );
 }
 
-function StatusBtn({ icon: Icon, label, color, onClick, disabled }: {
-  icon: typeof RotateCw; label: string; color: string; onClick: () => void; disabled?: boolean;
+function SBtn({ icon: Icon, color, onClick, disabled, last }: {
+  icon: typeof RotateCw; color: string; onClick: () => void; disabled?: boolean; last?: boolean;
 }) {
-  const colors: Record<string, string> = {
-    blue: 'border-blue-200 text-blue-600 hover:bg-blue-50',
-    green: 'border-green-200 text-green-600 hover:bg-green-50',
-    red: 'border-red-200 text-red-600 hover:bg-red-50',
-    gray: 'border-gray-200 text-gray-500 hover:bg-gray-50',
-  };
   return (
     <button onClick={onClick} disabled={disabled}
-      className={`flex flex-col items-center justify-center gap-0.5 py-2.5 border-2 rounded-xl transition-all cursor-pointer text-[10px] font-semibold active:scale-95 ${colors[color]} ${disabled ? 'opacity-30 cursor-not-allowed' : ''}`}>
-      <Icon className="w-5 h-5" />{label}
+      className={`flex-1 flex items-center justify-center py-2.5 ${color} cursor-pointer transition-all active:scale-95 ${!last ? 'border-r border-border' : ''} ${disabled ? 'opacity-25 cursor-not-allowed' : ''}`}>
+      <Icon className="w-4.5 h-4.5" />
     </button>
   );
 }
 
-function Detail({ label, value, highlight }: { label: string; value?: string; highlight?: 'green' | 'red' }) {
+function Det({ label, value }: { label: string; value?: string }) {
   if (!value) return null;
-  const hColor = highlight === 'green' ? 'text-green-600 font-bold' : highlight === 'red' ? 'text-red-600 font-bold' : 'text-text';
   return (
-    <div className="bg-white rounded-xl px-4 py-3 border border-border">
-      <div className="text-[11px] text-text-secondary font-semibold uppercase tracking-wider">{label}</div>
-      <div className={`text-sm mt-0.5 break-words ${hColor}`}>{value}</div>
+    <div className="flex items-baseline gap-2 text-xs">
+      <span className="text-text-secondary font-semibold shrink-0 w-24">{label}</span>
+      <span className="text-text break-words">{value}</span>
     </div>
   );
 }

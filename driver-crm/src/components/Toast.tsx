@@ -2,12 +2,11 @@ import { useApp } from '../store/useAppStore';
 
 export function Toast() {
   const { toastMessage } = useApp();
-
   if (!toastMessage) return null;
 
   return (
-    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[60]">
-      <div className="bg-text text-white rounded-2xl px-6 py-4 shadow-2xl text-sm font-semibold max-w-xs text-center">
+    <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[60]">
+      <div className="bg-dark text-white rounded-full px-5 py-2.5 shadow-xl text-sm font-semibold whitespace-nowrap">
         {toastMessage}
       </div>
     </div>
