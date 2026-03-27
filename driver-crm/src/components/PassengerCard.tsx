@@ -7,24 +7,17 @@ import type { Passenger, ItemStatus } from '../types';
 import { useApp } from '../store/useAppStore';
 import { updatePassengerStatus } from '../api';
 
-interface Props {
-  passenger: Passenger;
-  index: number;
-  onTransfer?: () => void;
-}
+interface Props { passenger: Passenger; index: number; onTransfer?: () => void; }
 
-const statusColors: Record<ItemStatus, string> = {
-  pending: 'border-l-amber-400',
-  'in-progress': 'border-l-blue-500',
-  completed: 'border-l-green-500',
-  cancelled: 'border-l-red-500',
+const borderColor: Record<ItemStatus, string> = {
+  pending: 'border-l-amber-400', 'in-progress': 'border-l-blue-500',
+  completed: 'border-l-emerald-500', cancelled: 'border-l-red-400',
 };
-
-const statusLabels: Record<ItemStatus, { text: string; color: string }> = {
-  pending: { text: 'Очікує', color: 'bg-amber-50 text-amber-700' },
-  'in-progress': { text: 'В роботі', color: 'bg-blue-50 text-blue-700' },
-  completed: { text: 'Готово', color: 'bg-green-50 text-green-700' },
-  cancelled: { text: 'Скасов.', color: 'bg-red-50 text-red-700' },
+const statusLabel: Record<ItemStatus, { t: string; c: string }> = {
+  pending: { t: 'Очікує', c: 'text-amber-600 bg-amber-50' },
+  'in-progress': { t: 'В роботі', c: 'text-blue-600 bg-blue-50' },
+  completed: { t: 'Готово', c: 'text-emerald-600 bg-emerald-50' },
+  cancelled: { t: 'Скасов.', c: 'text-red-600 bg-red-50' },
 };
 
 export function PassengerCard({ passenger, index, onTransfer }: Props) {
@@ -36,171 +29,112 @@ export function PassengerCard({ passenger, index, onTransfer }: Props) {
   const status = getStatus(passenger._statusKey);
   const canUndo = status === 'completed' || status === 'cancelled';
   const routeName = isUnifiedView && passenger._sourceRoute ? passenger._sourceRoute : currentSheet;
-  const sl = statusLabels[status];
+  const sl = statusLabel[status];
 
-  const handleStatus = async (newStatus: ItemStatus) => {
-    setStatus(passenger._statusKey, newStatus);
-    try {
-      await updatePassengerStatus(driverName, routeName, passenger, newStatus);
-      showToast(statusLabels[newStatus].text + '!');
-    } catch (err) { showToast('Помилка: ' + (err as Error).message); }
+  const doStatus = async (ns: ItemStatus) => {
+    setStatus(passenger._statusKey, ns);
+    try { await updatePassengerStatus(driverName, routeName, passenger, ns); showToast(statusLabel[ns].t + '!'); }
+    catch (e) { showToast('Помилка: ' + (e as Error).message); }
   };
-
-  const handleCancel = async () => {
+  const doCancel = async () => {
     if (!cancelReason.trim()) { showToast('Введи причину'); return; }
-    setStatus(passenger._statusKey, 'cancelled');
-    setShowCancel(false);
-    try {
-      await updatePassengerStatus(driverName, routeName, passenger, 'cancelled', cancelReason);
-      showToast('Скасовано');
-    } catch (err) { showToast('Помилка: ' + (err as Error).message); }
+    setStatus(passenger._statusKey, 'cancelled'); setShowCancel(false);
+    try { await updatePassengerStatus(driverName, routeName, passenger, 'cancelled', cancelReason); showToast('Скасовано'); }
+    catch (e) { showToast('Помилка: ' + (e as Error).message); }
   };
-
-  const handleUndo = async () => {
+  const doUndo = async () => {
     if (!canUndo) return;
-    const prev = status;
-    setStatus(passenger._statusKey, 'pending');
-    try {
-      await updatePassengerStatus(driverName, routeName, passenger, 'pending', 'Відміна статусу водієм');
-      showToast('Статус відмінено');
-    } catch (err) {
-      showToast('Помилка: ' + (err as Error).message);
-      setStatus(passenger._statusKey, prev);
-    }
+    const prev = status; setStatus(passenger._statusKey, 'pending');
+    try { await updatePassengerStatus(driverName, routeName, passenger, 'pending', 'Відміна'); showToast('Відмінено'); }
+    catch (e) { showToast('Помилка: ' + (e as Error).message); setStatus(passenger._statusKey, prev); }
   };
-
-  const navigateTo = (addr: string) => {
+  const nav = (addr: string) => {
     if (addr) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(addr)}&travelmode=driving`, '_blank');
     else showToast('Немає адреси');
   };
 
   return (
-    <div className={`bg-card rounded-xl border border-border ${statusColors[status]} border-l-[5px] overflow-hidden`}>
-      {/* Header */}
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-blue-500 text-white flex items-center justify-center text-xs font-black shrink-0">
+    <div className={`bg-card rounded-2xl border border-border ${borderColor[status]} border-l-4 overflow-hidden shadow-sm`}>
+      <div className="p-3.5">
+        {/* Top row */}
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center text-xs font-black shrink-0">
             {index + 1}
           </div>
           <div className="flex-1 min-w-0">
             {isUnifiedView && passenger._sourceRoute && (
-              <span className="inline-block px-1.5 py-0.5 rounded text-[9px] font-bold text-blue-600 bg-blue-50 mb-0.5">
-                {passenger._sourceRoute}
-              </span>
+              <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold text-blue-600 bg-blue-50 mb-0.5">{passenger._sourceRoute}</span>
             )}
-            <div className="font-bold text-text text-[13px] leading-tight truncate">{passenger.name}</div>
-            <div className="flex items-center gap-1 text-xs text-text-secondary truncate">
-              <Car className="w-3 h-3 shrink-0" />{passenger.from}
-              <ArrowRight className="w-3 h-3 shrink-0 text-brand" />{passenger.to}
+            <div className="font-semibold text-text text-[13px] leading-snug truncate">{passenger.name}</div>
+            <div className="flex items-center gap-1 text-[11px] text-muted mt-0.5">
+              <Car className="w-3 h-3 shrink-0" /><span className="truncate">{passenger.from}</span>
+              <ArrowRight className="w-3 h-3 shrink-0 text-brand" /><span className="truncate">{passenger.to}</span>
             </div>
           </div>
-          <span className={`shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-bold ${sl.color}`}>{sl.text}</span>
+          <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold ${sl.c}`}>{sl.t}</span>
         </div>
 
         {/* Chips */}
-        <div className="flex flex-wrap gap-1 mt-2">
-          <Chip icon={Phone} color="green">{passenger.phone}</Chip>
-          {passenger.date && <Chip icon={Calendar} color="gray">{passenger.date}</Chip>}
-          {passenger.timing && <Chip icon={Clock} color="gray">{passenger.timing}</Chip>}
-          {passenger.seats && <Chip icon={Users} color="blue">{passenger.seats} місць</Chip>}
-          {passenger.payment && <Chip icon={FileText} color="green" bold>€{passenger.payment}</Chip>}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          <C icon={Phone} c="green">{passenger.phone}</C>
+          {passenger.date && <C icon={Calendar} c="gray">{passenger.date}</C>}
+          {passenger.timing && <C icon={Clock} c="gray">{passenger.timing}</C>}
+          {passenger.seats && <C icon={Users} c="blue">{passenger.seats} місць</C>}
+          {passenger.payment && <C icon={FileText} c="green" b>€{passenger.payment}</C>}
         </div>
-      </div>
 
-      {/* Actions */}
-      <div className="px-3 pb-2">
+        {/* Actions */}
+        <div className="flex gap-2 mb-2">
+          <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { window.location.href = `tel:${passenger.phone}`; }} />
+          <Btn icon={Car} label="Звідки" color="bg-blue-50 text-blue-700" onClick={() => nav(passenger.from)} />
+          <Btn icon={MapPin} label="Куди" color="bg-blue-50 text-blue-700" onClick={() => nav(passenger.to)} />
+        </div>
+        <div className={`flex gap-2 mb-2`}>
+          <Btn icon={expanded ? ChevronUp : ChevronDown} label={expanded ? 'Згорнути' : 'Деталі'} color="bg-gray-50 text-gray-600" onClick={() => setExpanded(!expanded)} />
+          {onTransfer && <Btn icon={Repeat} label="Перенести" color="bg-amber-50 text-amber-700" onClick={onTransfer} />}
+        </div>
+
+        {/* Status */}
         <div className="flex gap-1.5">
-          <ActBtn icon={Phone} label="Дзвонити" onClick={() => { window.location.href = `tel:${passenger.phone}`; }} />
-          <ActBtn icon={Car} label="Відправка" onClick={() => navigateTo(passenger.from)} />
-          <ActBtn icon={MapPin} label="Прибуття" onClick={() => navigateTo(passenger.to)} />
-        </div>
-        <div className={`flex gap-1.5 mt-1.5`}>
-          <ActBtn icon={expanded ? ChevronUp : ChevronDown} label="Деталі" onClick={() => setExpanded(!expanded)} />
-          {onTransfer && (
-            <button onClick={onTransfer}
-              className="flex-1 flex items-center justify-center gap-1 py-2 bg-amber-50 rounded-lg text-[11px] font-semibold text-amber-700 cursor-pointer active:scale-95">
-              <Repeat className="w-3.5 h-3.5" /> Перенести
-            </button>
-          )}
+          <SB icon={RotateCw} c="border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => doStatus('in-progress')} />
+          <SB icon={CheckCircle2} c="border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={() => doStatus('completed')} />
+          <SB icon={XCircle} c="border-red-200 text-red-500 hover:bg-red-50" onClick={() => { setShowCancel(true); setExpanded(true); }} />
+          <SB icon={Undo2} c="border-gray-200 text-gray-400 hover:bg-gray-50" onClick={doUndo} disabled={!canUndo} />
         </div>
       </div>
 
-      {/* Status buttons */}
-      <div className="flex border-t border-border">
-        <SBtn icon={RotateCw} color="text-blue-600 bg-blue-50" onClick={() => handleStatus('in-progress')} />
-        <SBtn icon={CheckCircle2} color="text-green-600 bg-green-50" onClick={() => handleStatus('completed')} />
-        <SBtn icon={XCircle} color="text-red-500 bg-red-50" onClick={() => { setShowCancel(true); setExpanded(true); }} />
-        <SBtn icon={Undo2} color="text-gray-400 bg-gray-50" onClick={handleUndo} disabled={!canUndo} last />
-      </div>
-
-      {/* Expanded */}
       {expanded && (
-        <div className="border-t border-border bg-bg p-3 space-y-2">
-          <Det label="ПІБ" value={passenger.name} />
-          <Det label="ІД" value={passenger.id} />
-          <Det label="Дата виїзду" value={passenger.date} />
-          <Det label="Маршрут" value={`${passenger.from} → ${passenger.to}`} />
-          <Det label="Місць" value={passenger.seats?.toString()} />
-          <Det label="Вага" value={passenger.weight} />
-          <Det label="Автомобіль" value={passenger.vehicle} />
-          {passenger._sourceRoute && <Det label="Маршрут. лист" value={passenger._sourceRoute} />}
-          {passenger.note?.trim() && <Det label="Примітка" value={passenger.note} />}
+        <div className="border-t border-border bg-gray-50/80 px-3.5 py-3 space-y-1.5">
+          <D l="ПІБ" v={passenger.name} /><D l="ІД" v={passenger.id} /><D l="Дата" v={passenger.date} />
+          <D l="Маршрут" v={`${passenger.from} → ${passenger.to}`} /><D l="Місць" v={passenger.seats?.toString()} />
+          <D l="Вага" v={passenger.weight} /><D l="Автомобіль" v={passenger.vehicle} />
+          {passenger._sourceRoute && <D l="Маршрут. лист" v={passenger._sourceRoute} />}
+          {passenger.note?.trim() && <D l="Примітка" v={passenger.note} />}
         </div>
       )}
 
-      {/* Cancel */}
       {showCancel && (
-        <div className="border-t border-red-200 bg-red-50 p-3">
-          <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)}
-            placeholder="Причина скасування..." autoFocus
+        <div className="border-t border-red-100 bg-red-50/60 p-3.5">
+          <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Причина скасування..." autoFocus
             className="w-full px-3 py-2.5 bg-white border border-red-200 rounded-xl text-text text-sm resize-none h-16 focus:outline-none focus:border-red-400" />
-          <button onClick={handleCancel}
-            className="w-full mt-2 py-2.5 bg-red-500 text-white font-bold rounded-xl text-xs cursor-pointer">
-            Підтвердити
-          </button>
+          <button onClick={doCancel} className="w-full mt-2 py-2.5 bg-red-500 text-white font-bold rounded-xl text-sm cursor-pointer active:scale-[0.98]">Підтвердити</button>
         </div>
       )}
     </div>
   );
 }
 
-function Chip({ icon: Icon, color, bold, children }: { icon: typeof Phone; color: string; bold?: boolean; children: React.ReactNode }) {
-  const c: Record<string, string> = {
-    green: 'bg-green-50 text-green-700', blue: 'bg-blue-50 text-blue-700', gray: 'bg-gray-100 text-gray-600',
-  };
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] ${bold ? 'font-bold' : 'font-semibold'} ${c[color]}`}>
-      <Icon className="w-3 h-3" />{children}
-    </span>
-  );
+function C({ icon: I, c, b, children }: { icon: typeof Phone; c: string; b?: boolean; children: React.ReactNode }) {
+  const m: Record<string, string> = { green: 'bg-green-50 text-green-700', blue: 'bg-blue-50 text-blue-700', gray: 'bg-gray-100 text-gray-500' };
+  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${b ? 'font-bold' : 'font-medium'} ${m[c]}`}><I className="w-3 h-3" />{children}</span>;
 }
-
-function ActBtn({ icon: Icon, label, onClick }: { icon: typeof Phone; label: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick}
-      className="flex-1 flex items-center justify-center gap-1 py-2 bg-bg rounded-lg text-[11px] font-semibold text-text-secondary hover:text-brand transition-colors cursor-pointer active:scale-95">
-      <Icon className="w-3.5 h-3.5" />{label}
-    </button>
-  );
+function Btn({ icon: I, label, color, onClick }: { icon: typeof Phone; label: string; color: string; onClick: () => void }) {
+  return <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer active:scale-95 transition-transform ${color}`}><I className="w-4 h-4" />{label}</button>;
 }
-
-function SBtn({ icon: Icon, color, onClick, disabled, last }: {
-  icon: typeof RotateCw; color: string; onClick: () => void; disabled?: boolean; last?: boolean;
-}) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className={`flex-1 flex items-center justify-center py-2.5 ${color} cursor-pointer transition-all active:scale-95 ${!last ? 'border-r border-border' : ''} ${disabled ? 'opacity-25 cursor-not-allowed' : ''}`}>
-      <Icon className="w-4.5 h-4.5" />
-    </button>
-  );
+function SB({ icon: I, c, onClick, disabled }: { icon: typeof RotateCw; c: string; onClick: () => void; disabled?: boolean }) {
+  return <button onClick={onClick} disabled={disabled} className={`flex-1 py-2 border rounded-xl flex items-center justify-center cursor-pointer active:scale-95 transition-all ${c} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}><I className="w-4 h-4" /></button>;
 }
-
-function Det({ label, value }: { label: string; value?: string }) {
-  if (!value) return null;
-  return (
-    <div className="flex items-baseline gap-2 text-xs">
-      <span className="text-text-secondary font-semibold shrink-0 w-24">{label}</span>
-      <span className="text-text break-words">{value}</span>
-    </div>
-  );
+function D({ l, v }: { l: string; v?: string }) {
+  if (!v) return null;
+  return <div className="flex gap-2 text-xs"><span className="text-muted font-medium shrink-0 w-[90px]">{l}</span><span className="text-text break-words">{v}</span></div>;
 }

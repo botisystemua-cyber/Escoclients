@@ -4,13 +4,12 @@
   --color-brand: #22c55e;
   --color-brand-dark: #16a34a;
   --color-brand-light: #f0fdf4;
-  --color-bg: #f0f0f0;
+  --color-bg: #f2f4f7;
   --color-card: #ffffff;
-  --color-dark: #111111;
-  --color-dark-soft: #1a1a1a;
-  --color-text: #1a1a1a;
+  --color-text: #111827;
   --color-text-secondary: #6b7280;
   --color-border: #e5e7eb;
+  --color-muted: #9ca3af;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
