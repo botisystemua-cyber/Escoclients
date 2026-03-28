@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Phone, MapPin, ChevronDown, ChevronUp, RotateCw, CheckCircle2, XCircle, Undo2,
-  Scale, Clock, MessageSquare, Image, CreditCard, Navigation, FileText,
+  FileText, Scale, Clock, MessageSquare, Image, CreditCard, Hash, Navigation,
 } from 'lucide-react';
 import type { Delivery, ItemStatus } from '../types';
 import { useApp } from '../store/useAppStore';
@@ -9,15 +9,15 @@ import { updateDeliveryStatus } from '../api';
 
 interface Props { delivery: Delivery; globalIndex: number; }
 
-const leftBorder: Record<ItemStatus, string> = {
+const borderColor: Record<ItemStatus, string> = {
   pending: 'border-l-amber-400', 'in-progress': 'border-l-blue-500',
   completed: 'border-l-emerald-500', cancelled: 'border-l-red-400',
 };
-const stLabel: Record<ItemStatus, { t: string; c: string }> = {
-  pending: { t: 'Очікує', c: 'text-amber-700 bg-amber-50' },
-  'in-progress': { t: 'В роботі', c: 'text-blue-700 bg-blue-50' },
-  completed: { t: 'Готово', c: 'text-emerald-700 bg-emerald-50' },
-  cancelled: { t: 'Скасов.', c: 'text-red-700 bg-red-50' },
+const statusLabel: Record<ItemStatus, { t: string; c: string }> = {
+  pending: { t: 'Очікує', c: 'text-amber-600 bg-amber-50' },
+  'in-progress': { t: 'В роботі', c: 'text-blue-600 bg-blue-50' },
+  completed: { t: 'Готово', c: 'text-emerald-600 bg-emerald-50' },
+  cancelled: { t: 'Скасов.', c: 'text-red-600 bg-red-50' },
 };
 
 export function DeliveryCard({ delivery, globalIndex }: Props) {
@@ -33,11 +33,11 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
   const payStatusVal = delivery.paymentStatus || delivery.payStatus || '';
   const statusVal = delivery.parcelStatus || delivery.status || '';
   const canUndo = status === 'completed' || status === 'cancelled';
-  const sl = stLabel[status];
+  const sl = statusLabel[status];
 
   const doStatus = async (ns: ItemStatus) => {
     setStatus(delivery._statusKey, ns);
-    try { await updateDeliveryStatus(driverName, currentSheet, delivery, ns); showToast(stLabel[ns].t + '!'); }
+    try { await updateDeliveryStatus(driverName, currentSheet, delivery, ns); showToast(statusLabel[ns].t + '!'); }
     catch (e) { showToast('Помилка: ' + (e as Error).message); }
   };
   const doCancel = async () => {
@@ -47,7 +47,8 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
     catch (e) { showToast('Помилка: ' + (e as Error).message); }
   };
   const doUndo = async () => {
-    if (!canUndo) return; const prev = status; setStatus(delivery._statusKey, 'pending');
+    if (!canUndo) return;
+    const prev = status; setStatus(delivery._statusKey, 'pending');
     try { await updateDeliveryStatus(driverName, currentSheet, delivery, 'pending', 'Відміна'); showToast('Відмінено'); }
     catch (e) { showToast('Помилка: ' + (e as Error).message); setStatus(delivery._statusKey, prev); }
   };
@@ -58,152 +59,90 @@ export function DeliveryCard({ delivery, globalIndex }: Props) {
   };
 
   return (
-    <div className={`bg-card rounded-2xl ${leftBorder[status]} border-l-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] overflow-hidden`}>
-      <div className="px-4 pt-3.5 pb-3">
-        {/* === ROW 1: Number + Address + Status pill === */}
-        <div className="flex items-start gap-3 mb-1.5">
-          <span className="w-7 h-7 rounded-lg bg-gray-100 text-secondary flex items-center justify-center text-[11px] font-bold shrink-0 mt-0.5">
+    <div className={`bg-card rounded-2xl border border-border ${borderColor[status]} border-l-4 overflow-hidden shadow-sm`}>
+      <div className="p-3.5">
+        {/* Top row */}
+        <div className="flex items-center gap-2.5 mb-2">
+          <div className="w-8 h-8 rounded-full bg-gray-100 text-text flex items-center justify-center text-xs font-black shrink-0">
             {globalIndex + 1}
-          </span>
+          </div>
           <div className="flex-1 min-w-0">
-            {/* ADDRESS — primary, bold, larger */}
-            <p className="font-bold text-text text-[15px] leading-snug">
-              {show('address') && (delivery.address || '—')}
-            </p>
-            {/* Name + ID — secondary, muted */}
-            <p className="text-xs text-secondary mt-0.5 truncate">
-              {show('name') && delivery.name}{show('id') && <span className="text-muted"> · #{delivery.internalNumber}</span>}
-              {show('vo') && delivery.vo && <span className="text-muted"> · {delivery.vo}</span>}
-            </p>
+            <div className="font-semibold text-text text-[13px] leading-snug truncate">
+              {show('id') && <span className="text-muted">#{delivery.internalNumber} </span>}
+              {show('address') && delivery.address}
+            </div>
+            {show('name') && delivery.name && <div className="text-xs text-muted truncate mt-0.5">{delivery.name}</div>}
           </div>
           <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold ${sl.c}`}>{sl.t}</span>
         </div>
 
-        {/* === ROW 2: Key params — neutral chips, money highlighted === */}
-        <div className="flex flex-wrap items-center gap-1.5 ml-10 mb-2.5">
-          {show('price') && priceVal && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold text-emerald-700 bg-emerald-50">
-              <CreditCard className="w-3 h-3" />€{priceVal}
-            </span>
-          )}
-          {show('weight') && delivery.weight && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">
-              <Scale className="w-3 h-3" />{delivery.weight}кг
-            </span>
-          )}
-          {show('ttn') && delivery.ttn && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">
-              <FileText className="w-3 h-3" />{delivery.ttn}
-            </span>
-          )}
-          {show('timing') && delivery.timing && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">
-              <Clock className="w-3 h-3" />{delivery.timing}
-            </span>
-          )}
-          {show('direction') && delivery.direction && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">
-              <Navigation className="w-3 h-3" />{delivery.direction}
-            </span>
-          )}
-          {show('status') && statusVal && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">{statusVal}</span>
-          )}
-          {show('payStatus') && payStatusVal && (
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${payStatusVal === 'Оплачено' ? 'text-emerald-700 bg-emerald-50' : 'text-red-600 bg-red-50'}`}>{payStatusVal}</span>
-          )}
-          {show('payment') && paymentVal && !payStatusVal && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium text-secondary bg-gray-100">{paymentVal}</span>
-          )}
+        {/* Chips */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {show('phone') && delivery.phone && <C icon={Phone} c="green">{delivery.phone}</C>}
+          {show('price') && priceVal && <C icon={CreditCard} c="green" b>€{priceVal}</C>}
+          {show('ttn') && delivery.ttn && <C icon={FileText} c="red">ТТН: {delivery.ttn}</C>}
+          {show('weight') && delivery.weight && <C icon={Scale} c="gray">{delivery.weight}кг</C>}
+          {show('direction') && delivery.direction && <C icon={Navigation} c="purple">{delivery.direction}</C>}
+          {show('timing') && delivery.timing && <C icon={Clock} c="gray">{delivery.timing}</C>}
+          {show('status') && statusVal && <C icon={Hash} c="blue">{statusVal}</C>}
+          {show('payment') && paymentVal && <C icon={CreditCard} c="gray">{paymentVal}</C>}
+          {show('payStatus') && payStatusVal && <C icon={CreditCard} c={payStatusVal === 'Оплачено' ? 'green' : 'red'} b>{payStatusVal}</C>}
         </div>
-
-        {/* === ROW 3: Note — yellow highlight if present === */}
         {show('note') && delivery.note?.trim() && (
-          <div className="ml-10 mb-2.5 flex items-start gap-1.5 px-2.5 py-1.5 rounded-lg bg-highlight text-amber-800 text-xs leading-snug">
-            <MessageSquare className="w-3.5 h-3.5 mt-0.5 shrink-0 text-amber-500" />
-            <span className="line-clamp-2">{delivery.note}</span>
-          </div>
+          <p className="text-[11px] text-muted leading-snug mb-3 flex gap-1"><MessageSquare className="w-3 h-3 mt-0.5 shrink-0" /><span className="line-clamp-2">{delivery.note}</span></p>
         )}
 
-        {/* === ROW 4: Phone (always visible, prominent) === */}
-        {show('phone') && delivery.phone && (
-          <div className="ml-10 mb-3 text-sm font-semibold text-text flex items-center gap-1.5">
-            <Phone className="w-3.5 h-3.5 text-brand" />{delivery.phone}
-          </div>
-        )}
-
-        {/* === ACTIONS: One primary + secondary icons === */}
-        <div className="flex items-center gap-2 ml-10">
-          {/* Primary CTA */}
-          <button onClick={() => doStatus(status === 'pending' ? 'in-progress' : 'completed')}
-            className="flex-1 py-2.5 bg-brand text-white font-bold text-xs rounded-xl cursor-pointer active:scale-[0.97] transition-transform shadow-sm shadow-brand/20 text-center">
-            {status === 'pending' ? 'В роботу' : status === 'in-progress' ? 'Завершити' : 'Готово ✓'}
-          </button>
-          {/* Secondary actions — icon-only */}
-          <IconBtn icon={Phone} title="Дзвонити" onClick={() => { window.location.href = `tel:${delivery.phone}`; }} />
-          <IconBtn icon={MapPin} title="Карта" onClick={navigate} />
-          <IconBtn icon={expanded ? ChevronUp : ChevronDown} title="Деталі" onClick={() => setExpanded(!expanded)} />
+        {/* Action buttons */}
+        <div className="flex gap-2 mb-2">
+          <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { window.location.href = `tel:${delivery.phone}`; }} />
+          <Btn icon={MapPin} label="Карта" color="bg-blue-50 text-blue-700" onClick={navigate} />
+          <Btn icon={expanded ? ChevronUp : ChevronDown} label={expanded ? 'Згорнути' : 'Деталі'} color="bg-gray-50 text-gray-600" onClick={() => setExpanded(!expanded)} />
         </div>
 
-        {/* === STATUS ROW: small, understated === */}
-        <div className="flex gap-1 mt-2 ml-10">
-          <MiniBtn icon={RotateCw} c="text-blue-500" onClick={() => doStatus('in-progress')} />
-          <MiniBtn icon={CheckCircle2} c="text-emerald-500" onClick={() => doStatus('completed')} />
-          <MiniBtn icon={XCircle} c="text-red-400" onClick={() => { setShowCancel(true); setExpanded(true); }} />
-          <MiniBtn icon={Undo2} c="text-muted" onClick={doUndo} disabled={!canUndo} />
+        {/* Status row */}
+        <div className="flex gap-1.5">
+          <SB icon={RotateCw} c="border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => doStatus('in-progress')} />
+          <SB icon={CheckCircle2} c="border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={() => doStatus('completed')} />
+          <SB icon={XCircle} c="border-red-200 text-red-500 hover:bg-red-50" onClick={() => { setShowCancel(true); setExpanded(true); }} />
+          <SB icon={Undo2} c="border-gray-200 text-gray-400 hover:bg-gray-50" onClick={doUndo} disabled={!canUndo} />
         </div>
       </div>
 
-      {/* EXPANDED DETAILS */}
       {expanded && (
-        <div className="border-t border-border bg-bg px-4 py-3 space-y-1.5">
+        <div className="border-t border-border bg-gray-50/80 px-3.5 py-3 space-y-1.5">
           <D l="ПІБ" v={delivery.name} /><D l="Номер" v={`${delivery.internalNumber}${delivery.id ? ' / ' + delivery.id : ''}`} />
-          {delivery.vo && <D l="ВО" v={delivery.vo} />}<D l="Адреса" v={delivery.address} />
-          <D l="ТТН" v={delivery.ttn} /><D l="Вага" v={delivery.weight} />
-          {delivery.direction && <D l="Напрямок" v={delivery.direction} />}
+          {delivery.vo && <D l="ВО" v={delivery.vo} />}<D l="Адреса" v={delivery.address} /><D l="ТТН" v={delivery.ttn} />
+          <D l="Вага" v={delivery.weight} />{delivery.direction && <D l="Напрямок" v={delivery.direction} />}
           <D l="Телефон" v={delivery.phone} />{delivery.registrarPhone && <D l="Тел. реєстр." v={delivery.registrarPhone} />}
-          {priceVal && <D l="Сума" v={'€' + priceVal} />}{paymentVal && <D l="Оплата" v={paymentVal} />}
-          {payStatusVal && <D l="Статус оплати" v={payStatusVal} />}
-          {delivery.timing && <D l="Таймінг" v={delivery.timing} />}
-          {delivery.createdAt && <D l="Оформлено" v={delivery.createdAt} />}
-          {delivery.receiveDate && <D l="Отримано" v={delivery.receiveDate} />}
-          {delivery.smsNote?.trim() && <D l="SMS" v={delivery.smsNote} />}
-          {delivery.photo?.startsWith('http') && (
-            <a href={delivery.photo} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-blue-600 font-semibold pt-1"><Image className="w-3.5 h-3.5" />Фото</a>
-          )}
+          {priceVal && <D l="Сума" v={`€${priceVal}`} />}{paymentVal && <D l="Оплата" v={paymentVal} />}
+          {payStatusVal && <D l="Оплата статус" v={payStatusVal} />}
+          {delivery.timing && <D l="Таймінг" v={delivery.timing} />}{delivery.createdAt && <D l="Оформлено" v={delivery.createdAt} />}
+          {delivery.receiveDate && <D l="Отримано" v={delivery.receiveDate} />}{delivery.smsNote?.trim() && <D l="SMS" v={delivery.smsNote} />}
+          {delivery.photo?.startsWith('http') && <a href={delivery.photo} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-xs text-blue-600 font-semibold pt-1"><Image className="w-3.5 h-3.5" />Фото</a>}
         </div>
       )}
 
-      {/* CANCEL */}
       {showCancel && (
-        <div className="border-t border-red-100 bg-red-50/50 px-4 py-3">
+        <div className="border-t border-red-100 bg-red-50/60 p-3.5">
           <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} placeholder="Причина скасування..." autoFocus
-            className="w-full px-3 py-2 bg-white border border-red-200 rounded-xl text-text text-sm resize-none h-16 focus:outline-none focus:border-red-400" />
-          <button onClick={doCancel} className="w-full mt-2 py-2.5 bg-red-500 text-white font-bold rounded-xl text-xs cursor-pointer active:scale-[0.98]">Підтвердити</button>
+            className="w-full px-3 py-2.5 bg-white border border-red-200 rounded-xl text-text text-sm resize-none h-16 focus:outline-none focus:border-red-400" />
+          <button onClick={doCancel} className="w-full mt-2 py-2.5 bg-red-500 text-white font-bold rounded-xl text-sm cursor-pointer active:scale-[0.98]">Підтвердити</button>
         </div>
       )}
     </div>
   );
 }
 
-function IconBtn({ icon: I, title, onClick }: { icon: typeof Phone; title: string; onClick: () => void }) {
-  return (
-    <button onClick={onClick} title={title}
-      className="w-9 h-9 flex items-center justify-center rounded-xl bg-gray-50 text-secondary hover:text-brand hover:bg-gray-100 cursor-pointer active:scale-90 transition-all">
-      <I className="w-4 h-4" />
-    </button>
-  );
+function C({ icon: I, c, b, children }: { icon: typeof Phone; c: string; b?: boolean; children: React.ReactNode }) {
+  const m: Record<string, string> = { green: 'bg-green-50 text-green-700', red: 'bg-red-50 text-red-700', blue: 'bg-blue-50 text-blue-700', purple: 'bg-purple-50 text-purple-700', gray: 'bg-gray-100 text-gray-500' };
+  return <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] ${b ? 'font-bold' : 'font-medium'} ${m[c]}`}><I className="w-3 h-3" />{children}</span>;
 }
-
-function MiniBtn({ icon: I, c, onClick, disabled }: { icon: typeof RotateCw; c: string; onClick: () => void; disabled?: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled}
-      className={`p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer transition-all ${c} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}>
-      <I className="w-3.5 h-3.5" />
-    </button>
-  );
+function Btn({ icon: I, label, color, onClick }: { icon: typeof Phone; label: string; color: string; onClick: () => void }) {
+  return <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer active:scale-95 transition-transform ${color}`}><I className="w-4 h-4" />{label}</button>;
 }
-
+function SB({ icon: I, c, onClick, disabled }: { icon: typeof RotateCw; c: string; onClick: () => void; disabled?: boolean }) {
+  return <button onClick={onClick} disabled={disabled} className={`flex-1 py-2 border rounded-xl flex items-center justify-center cursor-pointer active:scale-95 transition-all ${c} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}><I className="w-4 h-4" /></button>;
+}
 function D({ l, v }: { l: string; v?: string }) {
   if (!v) return null;
   return <div className="flex gap-2 text-xs"><span className="text-muted font-medium shrink-0 w-[90px]">{l}</span><span className="text-text break-words">{v}</span></div>;
