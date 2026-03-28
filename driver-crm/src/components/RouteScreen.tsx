@@ -44,6 +44,22 @@ export function RouteScreen() {
         {/* Delivery routes */}
         <section>
           <SectionTitle icon={Package} label="Посилки" />
+
+          {/* Unified delivery */}
+          <button onClick={() => { openRoute('Зведений посилки', 'delivery', true); }}
+            className="w-full mb-2 p-3.5 bg-card border-2 border-gray-300 rounded-2xl cursor-pointer text-left active:scale-[0.98] transition-transform flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-50 flex items-center justify-center">
+                <BarChart3 className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-text">Зведений</div>
+                <div className="text-xs text-muted">Усі маршрути посилок</div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-muted/40" />
+          </button>
+
           <div className="space-y-2">
             {CONFIG.DELIVERY_ROUTES.map((route) => (
               <RouteCard key={route.name}
@@ -67,16 +83,19 @@ export function RouteScreen() {
           {/* Unified */}
           {passengerRoutes.length > 0 && (
             <button onClick={() => { openRoute('Зведений', 'passenger', true); }}
-              className="w-full mb-2 p-4 bg-brand rounded-2xl cursor-pointer text-left active:scale-[0.98] transition-transform shadow-md shadow-brand/20">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <BarChart3 className="w-5 h-5 text-white/70" />
-                  <div>
-                    <div className="text-sm font-bold text-white">Зведений</div>
-                    <div className="text-xs text-white/60">Усі маршрути</div>
-                  </div>
+              className="w-full mb-2 p-3.5 bg-card border-2 border-gray-300 rounded-2xl cursor-pointer text-left active:scale-[0.98] transition-transform flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <BarChart3 className="w-5 h-5 text-blue-500" />
                 </div>
-                <div className="text-3xl font-black text-white">{totalPassengers}</div>
+                <div>
+                  <div className="text-sm font-bold text-text">Зведений</div>
+                  <div className="text-xs text-muted">Усі маршрути</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-black text-brand">{totalPassengers}</span>
+                <ChevronRight className="w-4 h-4 text-muted/40" />
               </div>
             </button>
           )}
@@ -110,9 +129,9 @@ export function RouteScreen() {
 
 function SectionTitle({ icon: Icon, label }: { icon: typeof Package; label: string }) {
   return (
-    <div className="flex items-center gap-2 mb-2.5 px-0.5">
-      <Icon className="w-4 h-4 text-brand" />
-      <h2 className="text-xs font-bold text-muted uppercase tracking-widest">{label}</h2>
+    <div className="flex items-center gap-2.5 mb-3 px-0.5">
+      <Icon className="w-5 h-5 text-brand" />
+      <h2 className="text-lg font-black text-text">{label}</h2>
     </div>
   );
 }

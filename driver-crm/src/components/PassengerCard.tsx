@@ -54,7 +54,7 @@ export function PassengerCard({ passenger, index, onTransfer }: Props) {
   };
 
   return (
-    <div className={`bg-card rounded-2xl border border-border ${borderColor[status]} border-l-4 overflow-hidden shadow-sm`}>
+    <div className={`bg-card rounded-2xl border-2 border-gray-300 ${borderColor[status]} border-l-4 overflow-hidden shadow-[0_2px_8px_rgba(0,0,0,0.06)]`}>
       <div className="p-3.5">
         {/* Top row */}
         <div className="flex items-center gap-2.5 mb-2">
@@ -99,7 +99,7 @@ export function PassengerCard({ passenger, index, onTransfer }: Props) {
           <SB icon={RotateCw} c="border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => doStatus('in-progress')} />
           <SB icon={CheckCircle2} c="border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={() => doStatus('completed')} />
           <SB icon={XCircle} c="border-red-200 text-red-500 hover:bg-red-50" onClick={() => { setShowCancel(true); setExpanded(true); }} />
-          <SB icon={Undo2} c="border-gray-200 text-gray-400 hover:bg-gray-50" onClick={doUndo} disabled={!canUndo} />
+          <SB icon={Undo2} c="border-gray-200 text-gray-400 hover:bg-gray-50" onClick={canUndo ? doUndo : () => {}} disabled={!canUndo} />
         </div>
       </div>
 
@@ -132,7 +132,7 @@ function Btn({ icon: I, label, color, onClick }: { icon: typeof Phone; label: st
   return <button onClick={onClick} className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-semibold cursor-pointer active:scale-95 transition-transform ${color}`}><I className="w-4 h-4" />{label}</button>;
 }
 function SB({ icon: I, c, onClick, disabled }: { icon: typeof RotateCw; c: string; onClick: () => void; disabled?: boolean }) {
-  return <button onClick={onClick} disabled={disabled} className={`flex-1 py-2 border rounded-xl flex items-center justify-center cursor-pointer active:scale-95 transition-all ${c} ${disabled ? 'opacity-20 cursor-not-allowed' : ''}`}><I className="w-4 h-4" /></button>;
+  return <button onClick={onClick} disabled={disabled} className={`flex-1 py-2 border rounded-xl flex items-center justify-center transition-all ${c} ${disabled ? 'opacity-40' : 'cursor-pointer active:scale-95'}`}><I className="w-4 h-4" /></button>;
 }
 function D({ l, v }: { l: string; v?: string }) {
   if (!v) return null;

@@ -156,7 +156,7 @@ export function ListScreen() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 pb-20 space-y-2.5">
+      <div className="flex-1 overflow-y-auto px-3 py-3 pb-20 space-y-4">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <RefreshCw className="w-7 h-7 text-brand animate-spin mb-3" />
