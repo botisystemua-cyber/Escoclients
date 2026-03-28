@@ -86,76 +86,77 @@ export function ListScreen() {
 
   const handleTransfer = async (targetRoute: string) => {
     if (!transferTarget) return; showToast('Переносимо...');
-    try { await transferPassenger(transferTarget, transferTarget._sourceRoute || currentSheet, targetRoute); showToast(`Перенесено`); setTransferTarget(null); loadData(); }
+    try { await transferPassenger(transferTarget, transferTarget._sourceRoute || currentSheet, targetRoute); showToast('Перенесено'); setTransferTarget(null); loadData(); }
     catch (err) { showToast('Помилка: ' + (err as Error).message); }
   };
 
   const HeaderIcon = isUnifiedView ? BarChart3 : isDelivery ? Package : Users;
   const headerTitle = isUnifiedView ? 'Зведений' : isDelivery ? 'Посилки' : 'Пасажири';
 
-  const filters: { key: StatusFilter; label: string; count: number; pill: string; pillActive: string }[] = [
-    { key: 'all', label: 'Усі', count: stats.total, pill: 'bg-gray-100 text-gray-600', pillActive: 'bg-gray-800 text-white' },
-    { key: 'in-progress', label: 'В роботі', count: stats.inProgress, pill: 'bg-blue-50 text-blue-400', pillActive: 'bg-blue-500 text-white' },
-    { key: 'completed', label: 'Готово', count: stats.completed, pill: 'bg-emerald-50 text-emerald-400', pillActive: 'bg-emerald-500 text-white' },
-    { key: 'cancelled', label: 'Скас.', count: stats.cancelled, pill: 'bg-red-50 text-red-400', pillActive: 'bg-red-500 text-white' },
+  const filters: { key: StatusFilter; label: string; count: number }[] = [
+    { key: 'all', label: 'Усі', count: stats.total },
+    { key: 'in-progress', label: 'В роботі', count: stats.inProgress },
+    { key: 'completed', label: 'Готово', count: stats.completed },
+    { key: 'cancelled', label: 'Скас.', count: stats.cancelled },
   ];
 
   return (
     <div className="flex-1 flex flex-col bg-bg max-h-dvh overflow-hidden">
-      {/* Header — white */}
-      <div className="bg-white border-b border-border px-4 pt-4 pb-3 shrink-0">
+      {/* HEADER */}
+      <div className="bg-card border-b border-border px-4 pt-4 pb-3 shrink-0">
         {/* Top bar */}
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button onClick={goBack} className="p-2 -ml-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
               <ArrowLeft className="w-5 h-5 text-text" />
             </button>
-            <div className="flex items-center gap-2">
-              <HeaderIcon className="w-5 h-5 text-brand" />
-              <div>
-                <span className="text-sm font-bold text-text">{headerTitle}</span>
-                <span className="text-xs text-muted ml-2">
-                  {isUnifiedView && routeFilter !== 'all' ? routeFilter : currentSheet}
-                </span>
-              </div>
+            <HeaderIcon className="w-5 h-5 text-brand" />
+            <div>
+              <span className="text-[15px] font-bold text-text">{headerTitle}</span>
+              <span className="text-xs text-muted ml-1.5">{isUnifiedView && routeFilter !== 'all' ? routeFilter : currentSheet}</span>
             </div>
           </div>
-          <button onClick={() => loadData()}
-            className="p-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
+          <button onClick={() => loadData()} className="p-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
             <RefreshCw className={`w-5 h-5 text-muted ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        {/* Status pills */}
-        <div className="flex gap-2">
+        {/* === SEGMENTED CONTROL === */}
+        <div className="flex bg-gray-100 rounded-xl p-1 gap-0.5">
           {filters.map((f) => {
             const active = statusFilter === f.key;
             return (
               <button key={f.key} onClick={() => setStatusFilter(f.key)}
-                className={`flex-1 py-2 rounded-full text-center cursor-pointer active:scale-95 transition-all ${active ? f.pillActive + ' shadow-sm' : f.pill}`}>
-                <div className="text-sm font-black leading-tight">{f.count}</div>
-                <div className="text-[9px] font-semibold leading-tight">{f.label}</div>
+                className={`flex-1 py-2 rounded-lg text-center cursor-pointer transition-all text-xs font-semibold ${
+                  active ? 'bg-card text-text shadow-sm' : 'text-muted hover:text-secondary'
+                }`}>
+                {f.label}
+                {f.count > 0 && (
+                  <span className={`ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full text-[10px] font-bold px-1 ${
+                    active ? 'bg-brand text-white' : 'bg-gray-200 text-secondary'
+                  }`}>{f.count}</span>
+                )}
               </button>
             );
           })}
         </div>
 
-        {/* Route tabs */}
+        {/* Route tabs (unified) */}
         {isUnifiedView && routeTabs.length > 0 && (
           <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-0.5 -mx-1 px-1">
             {routeTabs.map((tab) => (
               <button key={tab.name} onClick={() => setRouteFilter(tab.name)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-all ${
-                  routeFilter === tab.name ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-500'
+                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold cursor-pointer transition-all ${
+                  routeFilter === tab.name ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-muted'
                 }`}>
-                {tab.label} <span className="font-black">{tab.count}</span>
+                {tab.label} <span className="font-bold">{tab.count}</span>
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* List */}
+      {/* LIST */}
       <div className="flex-1 overflow-y-auto px-3 py-3 pb-20 space-y-2.5">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
@@ -174,21 +175,16 @@ export function ListScreen() {
         )}
       </div>
 
-      {/* Bottom nav — white, clean */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-border flex justify-around items-center py-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] z-40">
-        <NB icon={isDelivery ? Package : Users} label={isDelivery ? 'Список' : 'Список'} active
+      {/* BOTTOM NAV */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border flex justify-around items-center py-1.5 pb-[calc(6px+env(safe-area-inset-bottom))] z-40">
+        <NB icon={isDelivery ? Package : Users} label="Список" active
           onClick={() => { document.querySelector('.overflow-y-auto')?.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         <NB icon={RefreshCw} label="Оновити" onClick={() => loadData()} />
-        {/* FAB */}
         <button onClick={() => setShowAddLead(true)}
-          className="w-12 h-12 -mt-6 rounded-full bg-brand flex items-center justify-center shadow-lg shadow-brand/30 cursor-pointer active:scale-90 transition-transform">
+          className="w-12 h-12 -mt-6 rounded-full bg-brand flex items-center justify-center shadow-lg shadow-brand/25 cursor-pointer active:scale-90 transition-transform">
           <Plus className="w-6 h-6 text-white" />
         </button>
-        {isDelivery ? (
-          <NB icon={Settings} label="Колонки" onClick={() => setShowColumnEditor(true)} />
-        ) : (
-          <NB icon={ListFilter} label="Фільтр" onClick={() => {}} />
-        )}
+        {isDelivery ? <NB icon={Settings} label="Колонки" onClick={() => setShowColumnEditor(true)} /> : <NB icon={ListFilter} label="Фільтр" onClick={() => {}} />}
         <NB icon={ArrowLeft} label="Назад" onClick={goBack} />
       </div>
 
