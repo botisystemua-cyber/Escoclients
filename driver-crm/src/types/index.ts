@@ -34,6 +34,7 @@ export interface Delivery {
   photo?: string;
   coords?: { lat: number; lng: number };
   _statusKey: string;
+  _sourceRoute?: string;
   driverStatus?: string;
 }
 

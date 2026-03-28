@@ -4,6 +4,7 @@ import {
   Plus, Settings, ListFilter,
 } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
+import { CONFIG } from '../config';
 import { fetchDeliveries, fetchPassengers, fetchPassengerRoutes, transferPassenger } from '../api';
 import { DeliveryCard } from './DeliveryCard';
 import { PassengerCard } from './PassengerCard';
@@ -32,7 +33,25 @@ export function ListScreen() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      if (isUnifiedView) {
+      if (isUnifiedView && isDelivery) {
+        // Unified delivery — fetch all delivery routes in parallel
+        const delRoutes = CONFIG.DELIVERY_ROUTES;
+        const results = await Promise.all(delRoutes.map(async (route) => {
+          try {
+            const items = await fetchDeliveries(route.name);
+            return items.map((d) => ({ ...d, _sourceRoute: route.name }));
+          } catch { return [] as (Delivery & { _sourceRoute: string })[]; }
+        }));
+        const all = results.flat();
+        all.forEach((d, idx) => {
+          d._statusKey = `del_${d.internalNumber}_${d._sourceRoute}_${idx}`;
+          const s = d.status || d.driverStatus;
+          if (s && s !== 'pending') setStatus(d._statusKey, s as ItemStatus);
+        });
+        setDeliveries(all);
+        showToast(`${all.length} посилок`);
+      } else if (isUnifiedView && !isDelivery) {
+        // Unified passenger — fetch all passenger routes in parallel
         let routes = passengerRoutes;
         if (routes.length === 0) { routes = await fetchPassengerRoutes(); setPassengerRoutes(routes); }
         const results = await Promise.all(routes.map(async (route) => {
@@ -64,15 +83,22 @@ export function ListScreen() {
 
   const getItems = (): (Delivery | Passenger)[] => {
     let items: (Delivery | Passenger)[];
-    if (isUnifiedView) items = routeFilter === 'all' ? allRoutePassengers : allRoutePassengers.filter((p) => p._sourceRoute === routeFilter);
-    else if (isDelivery) items = deliveries;
-    else items = passengers;
+    if (isUnifiedView && isDelivery) {
+      items = routeFilter === 'all' ? deliveries : deliveries.filter((d) => d._sourceRoute === routeFilter);
+    } else if (isUnifiedView) {
+      items = routeFilter === 'all' ? allRoutePassengers : allRoutePassengers.filter((p) => p._sourceRoute === routeFilter);
+    } else if (isDelivery) { items = deliveries; }
+    else { items = passengers; }
     if (statusFilter !== 'all') items = items.filter((i) => getStatus(i._statusKey) === statusFilter);
     return items;
   };
   const items = getItems();
 
-  const allItems = isUnifiedView ? (routeFilter === 'all' ? allRoutePassengers : allRoutePassengers.filter((p) => (p as Passenger)._sourceRoute === routeFilter)) : isDelivery ? deliveries : passengers;
+  const allItems = isUnifiedView && isDelivery
+    ? (routeFilter === 'all' ? deliveries : deliveries.filter((d) => d._sourceRoute === routeFilter))
+    : isUnifiedView
+      ? (routeFilter === 'all' ? allRoutePassengers : allRoutePassengers.filter((p) => (p as Passenger)._sourceRoute === routeFilter))
+      : isDelivery ? deliveries : passengers;
   const stats = {
     total: allItems.length,
     inProgress: allItems.filter((i) => getStatus(i._statusKey) === 'in-progress').length,
@@ -80,9 +106,14 @@ export function ListScreen() {
     cancelled: allItems.filter((i) => getStatus(i._statusKey) === 'cancelled').length,
   };
 
-  const routeTabs = isUnifiedView
-    ? [{ name: 'all', label: 'Усі', count: allRoutePassengers.length }, ...passengerRoutes.map((r) => ({ name: r.name, label: r.name, count: r.count }))]
-    : [];
+  const routeTabs = isUnifiedView && isDelivery
+    ? [{ name: 'all', label: 'Усі', count: deliveries.length }, ...CONFIG.DELIVERY_ROUTES.map((r) => ({
+        name: r.name, label: r.name.replace(' марш.', ''),
+        count: deliveries.filter((d) => d._sourceRoute === r.name).length,
+      }))]
+    : isUnifiedView
+      ? [{ name: 'all', label: 'Усі', count: allRoutePassengers.length }, ...passengerRoutes.map((r) => ({ name: r.name, label: r.name, count: r.count }))]
+      : [];
 
   const handleTransfer = async (targetRoute: string) => {
     if (!transferTarget) return; showToast('Переносимо...');

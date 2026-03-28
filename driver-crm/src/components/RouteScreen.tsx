@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, Users, RefreshCw, ChevronRight, BarChart3, LogOut } from 'lucide-react';
+import { Package, Users, RefreshCw, ChevronRight, BarChart3 } from 'lucide-react';
 import { BotiLogo } from './BotiLogo';
 import { useApp } from '../store/useAppStore';
 import { CONFIG } from '../config';
@@ -27,16 +27,16 @@ export function RouteScreen() {
       {/* Header */}
       <div className="bg-white px-5 pt-5 pb-4 border-b border-border">
         <div className="flex items-center justify-between">
-          <BotiLogo size="md" />
-          <button onClick={() => setCurrentScreen('login')} className="p-2 rounded-xl hover:bg-bg transition-colors cursor-pointer">
-            <LogOut className="w-5 h-5 text-muted" />
-          </button>
-        </div>
-        <div className="mt-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold">
-            {driverName.charAt(0).toUpperCase()}
+          <BotiLogo size="lg" />
+          <div className="flex items-center gap-2.5">
+            <div className="text-right">
+              <div className="text-xs text-muted">Водій</div>
+              <div className="text-sm font-bold text-text">{driverName}</div>
+            </div>
+            <button onClick={() => setCurrentScreen('login')} className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center text-sm font-bold cursor-pointer hover:bg-brand-dark transition-colors">
+              {driverName.charAt(0).toUpperCase()}
+            </button>
           </div>
-          <div className="text-sm"><span className="text-muted">Водій:</span> <span className="font-bold text-text">{driverName}</span></div>
         </div>
       </div>
 
