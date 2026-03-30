@@ -16,7 +16,7 @@
 // КОНФІГУРАЦІЯ
 // ============================================
 
-var SPREADSHEET_ID = '1Pd3nv3fbwZ_0YSzdG4cda-q52BQT57E0hDe7eQej6z8';
+var SPREADSHEET_ID = '17g3TFYg11EqdQ9eGrOKQV3n_nqPDFx7dqsJVaGWeDOo';
 
 // Аркуш логів водіїв
 var SHEET_LOGS = 'Логи водіїв';
