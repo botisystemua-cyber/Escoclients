@@ -258,7 +258,7 @@ export function ListScreen() {
         <NB icon={isPassenger ? Users : Package} label="Список" active
           onClick={() => { document.querySelector('.overflow-y-auto')?.scrollTo({ top: 0, behavior: 'smooth' }); }} />
         <NB icon={RefreshCw} label="Оновити" onClick={() => loadData()} />
-        {!showShippingTab && (
+        {!showShippingTab && !isUnifiedView && (
           <button onClick={() => setShowAddLead(true)}
             className="w-12 h-12 -mt-6 rounded-full bg-brand flex items-center justify-center shadow-lg shadow-brand/30 cursor-pointer active:scale-90 transition-transform">
             <Plus className="w-6 h-6 text-white" />

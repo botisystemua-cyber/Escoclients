@@ -26,7 +26,8 @@ const stLabel: Record<ItemStatus, { t: string; c: string }> = {
 };
 
 export function PassengerCard({ passenger, index, onTransfer }: Props) {
-  const { getStatus, setStatus, driverName, currentSheet, isUnifiedView, showToast } = useApp();
+  const { getStatus, setStatus, hiddenCols, driverName, currentSheet, isUnifiedView, showToast } = useApp();
+  const show = (col: string) => !hiddenCols.has(col);
   const [showCancel, setShowCancel] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [expanded, setExpanded] = useState(false);
@@ -69,22 +70,25 @@ export function PassengerCard({ passenger, index, onTransfer }: Props) {
             {isUnifiedView && passenger._sourceRoute && (
               <span className="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold text-blue-600 bg-blue-50 mb-0.5">{passenger._sourceRoute}</span>
             )}
-            <div className="font-bold text-text text-[13px] leading-snug truncate">{passenger.name}</div>
-            <div className="flex items-center gap-1 text-xs text-secondary truncate">
-              <Car className="w-3 h-3 shrink-0" /><span className="truncate">{passenger.from}</span>
-              <ArrowRight className="w-3 h-3 shrink-0 text-brand" /><span className="truncate">{passenger.to}</span>
-            </div>
+            {show('name') && <div className="font-bold text-text text-[13px] leading-snug truncate">{passenger.name}</div>}
+            {(show('from') || show('to')) && (
+              <div className="flex items-center gap-1 text-xs text-secondary truncate">
+                {show('from') && <><Car className="w-3 h-3 shrink-0" /><span className="truncate">{passenger.from}</span></>}
+                {show('from') && show('to') && <ArrowRight className="w-3 h-3 shrink-0 text-brand" />}
+                {show('to') && <span className="truncate">{passenger.to}</span>}
+              </div>
+            )}
           </div>
           <span className={`shrink-0 px-2.5 py-1 rounded-full text-[10px] font-bold ${sl.c}`}>{sl.t}</span>
         </div>
 
         {/* Chips */}
         <div className="flex flex-wrap gap-1.5 mb-2">
-          <C icon={Phone} c="green">{passenger.phone}</C>
-          {passenger.date && <C icon={Calendar} c="gray">{passenger.date}</C>}
-          {passenger.timing && <C icon={Clock} c="gray">{passenger.timing}</C>}
-          {passenger.seats && <C icon={Users} c="blue">{passenger.seats} місць</C>}
-          {passenger.payment && <C icon={FileText} c="green" b>€{passenger.payment}</C>}
+          {show('phone') && <C icon={Phone} c="green">{passenger.phone}</C>}
+          {show('date') && passenger.date && <C icon={Calendar} c="gray">{passenger.date}</C>}
+          {show('timing') && passenger.timing && <C icon={Clock} c="gray">{passenger.timing}</C>}
+          {show('seats') && passenger.seats && <C icon={Users} c="blue">{passenger.seats} місць</C>}
+          {show('payment') && passenger.payment && <C icon={FileText} c="green" b>€{passenger.payment}</C>}
         </div>
 
         {/* Actions */}

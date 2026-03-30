@@ -46,7 +46,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (key: string, status: ItemStatus) => {
       setStatuses((prev) => {
         const next = { ...prev, [key]: status };
-        localStorage.setItem('driverStatuses_' + currentSheet, JSON.stringify(next));
+        // Don't persist under __unified__ — each route saves separately
+        if (currentSheet && currentSheet !== '__unified__') {
+          localStorage.setItem('driverStatuses_' + currentSheet, JSON.stringify(next));
+        }
         return next;
       });
     },
