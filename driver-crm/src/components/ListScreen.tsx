@@ -242,13 +242,19 @@ export function ListScreen() {
         {/* Route tabs for unified */}
         {isUnifiedView && !showShipping && routeTabs.length > 0 && (
           <div className="flex gap-1.5 mt-2.5 justify-center overflow-x-auto pb-0.5 -mx-1 px-1">
-            {routeTabs.map((tab) => (
-              <button key={tab.name} onClick={() => setRouteFilter(tab.name)}
-                className={`shrink-0 min-w-[70px] px-4 py-2 rounded-full text-xs font-bold cursor-pointer transition-all ${
-                  routeFilter === tab.name ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-500'
-                }`}>
-                {tab.label} <span className="font-black">{tab.count}</span>
-              </button>
+            {routeTabs.map((tab) => {
+              const isAll = tab.name === 'all';
+              return (
+                <button key={tab.name} onClick={() => setRouteFilter(tab.name)}
+                  className={`shrink-0 rounded-full font-bold cursor-pointer transition-all ${
+                    isAll ? 'min-w-[80px] px-5 py-2 text-xs' : 'px-3 py-1.5 text-[10px]'
+                  } ${
+                    routeFilter === tab.name ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                  {tab.label} <span className="font-black">{tab.count}</span>
+                </button>
+              );
+            })}
             ))}
           </div>
         )}
