@@ -216,6 +216,8 @@ export async function fetchShippingItems(sheetName: string): Promise<ShippingIte
       pkgId: val(row, CS.PKG_ID),
       note: val(row, CS.NOTE),
       sheet: sheetName,
+      _statusKey: '',
+      _sourceRoute: undefined as string | undefined,
     });
   }
   return items;

@@ -88,6 +88,8 @@ export interface ShippingItem {
   pkgId: string;
   note: string;
   sheet: string;
+  _statusKey: string;
+  _sourceRoute?: string;
 }
 
 export type RouteItem = Passenger | Package;

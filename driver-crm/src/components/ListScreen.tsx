@@ -85,16 +85,19 @@ export function ListScreen() {
           if (isUnifiedView && routes.length > 0) {
             const all: ShippingItem[] = [];
             for (let ri = 0; ri < routes.length; ri++) {
+              const routeName = routes[ri].name;
               const sName = shippingRoutes.find((s) => s.name === 'Відправка_' + (ri + 1))?.name;
               if (!sName) continue;
               try {
                 const items = await fetchShippingItems(sName);
-                all.push(...items);
+                all.push(...items.map((s) => ({ ...s, _sourceRoute: routeName })));
               } catch { /* skip */ }
             }
+            all.forEach((s, i) => { s._statusKey = `ship_${s.dispatchId || s.rowNum}_${s._sourceRoute}_${i}`; if (s.status && s.status !== 'pending') setStatus(s._statusKey, s.status as ItemStatus); });
             setShippingItems(all);
           } else if (shippingSheetName) {
             const items = await fetchShippingItems(shippingSheetName);
+            items.forEach((s, i) => { s._statusKey = `ship_${s.dispatchId || s.rowNum}_${i}`; if (s.status && s.status !== 'pending') setStatus(s._statusKey, s.status as ItemStatus); });
             setShippingItems(items);
           }
         }
@@ -126,11 +129,13 @@ export function ListScreen() {
 
   const filteredPassengers = filterItems(passengers);
   const filteredPackages = filterItems(packages);
+  const filteredShipping = filterItems(shippingItems);
   const currentItems = viewTab === 'passengers' || viewTab === 'all' ? filteredPassengers : viewTab === 'packages' ? filteredPackages : [];
 
   // Stats
-  const allStatsItems = viewTab === 'all'
-    ? [...passengers, ...packages] as { _statusKey: string; _sourceRoute?: string }[]
+  const allStatsItems: { _statusKey: string; _sourceRoute?: string }[] = viewTab === 'all'
+    ? [...passengers, ...packages]
+    : viewTab === 'shipping' ? shippingItems
     : viewTab === 'passengers' ? passengers : packages;
   const statsBase = isUnifiedView && routeFilter !== 'all'
     ? allStatsItems.filter((i) => i._sourceRoute === routeFilter) : allStatsItems;
@@ -142,7 +147,7 @@ export function ListScreen() {
     cancelled: statsBase.filter((i) => getStatus(i._statusKey) === 'cancelled').length,
   };
 
-  const countSource = viewTab === 'all' ? [...passengers, ...packages] as { _sourceRoute?: string }[] : viewTab === 'passengers' ? passengers : packages;
+  const countSource: { _sourceRoute?: string }[] = viewTab === 'all' ? [...passengers, ...packages] : viewTab === 'shipping' ? shippingItems : viewTab === 'passengers' ? passengers : packages;
   const routeTabs = isUnifiedView
     ? [{ name: 'all', label: 'Усі', count: countSource.length },
        ...routes.map((r) => ({ name: r.name, label: r.name.replace('Маршрут_', 'М'), count: countSource.filter((i) => i._sourceRoute === r.name).length }))]
@@ -212,8 +217,7 @@ export function ListScreen() {
         )}
 
         {/* Status pills */}
-        {!showShipping && (
-          <div className="flex gap-2">
+        <div className="flex gap-2">
             {filters.map((f) => {
               const active = statusFilter === f.key;
               return (
@@ -225,10 +229,9 @@ export function ListScreen() {
               );
             })}
           </div>
-        )}
 
         {/* Route tabs for unified */}
-        {isUnifiedView && !showShipping && routeTabs.length > 0 && (
+        {isUnifiedView && routeTabs.length > 0 && (
           <div className="flex gap-1.5 mt-2.5 justify-center overflow-x-auto pb-0.5 -mx-1 px-1">
             {routeTabs.map((tab) => {
               const isAll = tab.name === 'all';
@@ -255,8 +258,8 @@ export function ListScreen() {
             <p className="text-muted text-sm">Завантаження...</p>
           </div>
         ) : showShipping ? (
-          shippingItems.length === 0 ? <Empty /> : shippingItems.map((item, i) => (
-            <ShippingCard key={`ship_${item.rowNum}_${i}`} item={item} index={i} />
+          filteredShipping.length === 0 ? <Empty /> : filteredShipping.map((item, i) => (
+            <ShippingCard key={item._statusKey || `ship_${item.rowNum}_${i}`} item={item} index={i} />
           ))
         ) : showAllTab ? (
           (filteredPassengers.length === 0 && filteredPackages.length === 0) ? <Empty /> : (
