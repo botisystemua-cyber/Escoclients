@@ -40,13 +40,13 @@ export function ListScreen() {
     try {
       if (tab === 'passengers') {
         if (isUnifiedView) {
-          const results = await Promise.all(routes.map(async (route) => {
+          const all: Passenger[] = [];
+          for (const route of routes) {
             try {
               const items = await fetchPassengers(route.name);
-              return items.map((p) => ({ ...p, _sourceRoute: route.name }));
-            } catch { return [] as Passenger[]; }
-          }));
-          const all = results.flat();
+              all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
+            } catch { /* skip failed route */ }
+          }
           all.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
           setPassengers(all);
         } else {
@@ -54,16 +54,16 @@ export function ListScreen() {
           items.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
           setPassengers(items);
         }
-        showToast(`${passengers.length || 'Завантажено'} пасажирів`);
+        showToast('Завантажено пасажирів');
       } else if (tab === 'packages') {
         if (isUnifiedView) {
-          const results = await Promise.all(routes.map(async (route) => {
+          const all: Pkg[] = [];
+          for (const route of routes) {
             try {
               const items = await fetchPackages(route.name);
-              return items.map((p) => ({ ...p, _sourceRoute: route.name }));
-            } catch { return [] as Pkg[]; }
-          }));
-          const all = results.flat();
+              all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
+            } catch { /* skip failed route */ }
+          }
           all.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
           setPackages(all);
         } else {
@@ -71,7 +71,7 @@ export function ListScreen() {
           items.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
           setPackages(items);
         }
-        showToast(`Завантажено посилок`);
+        showToast('Завантажено посилок');
       } else if (tab === 'shipping' && shippingSheetName) {
         const items = await fetchShippingItems(shippingSheetName);
         setShippingItems(items);
