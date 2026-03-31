@@ -14,7 +14,7 @@ export function RouteScreen() {
       const data = await fetchRoutes();
       setRoutes(data.routes);
       setShippingRoutes(data.shipping);
-    } catch (err) { showToast('Помилка: ' + (err as Error).message); }
+    } catch (err) { console.error('Route load error:', err); showToast('Помилка: ' + (err as Error).message); }
     finally { setLoading(false); }
   };
 

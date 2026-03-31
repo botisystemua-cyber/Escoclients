@@ -2,12 +2,19 @@ import { CONFIG } from '../config';
 import type { Route, ShippingRoute, Passenger, Package, ShippingItem, RouteItem } from '../types';
 
 async function postApi<T>(body: unknown): Promise<T> {
+  // Google Apps Script redirects POST → use redirect:'follow' + no-cors fallback
   const response = await fetch(CONFIG.API_URL, {
     method: 'POST',
+    redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body),
   });
-  return response.json();
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error('Невалідна відповідь від сервера: ' + text.substring(0, 200));
+  }
 }
 
 // ---- Routes ----
