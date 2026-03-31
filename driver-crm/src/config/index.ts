@@ -2,5 +2,5 @@ export const CONFIG = {
   COMPANY_NAME: 'BotiLogistics',
   // Єдиний API — Google Apps Script деплой для Marhrut_Test
   API_URL:
-    'https://script.google.com/macros/s/AKfycbzwfWEjZqS7Va2hyLuGfovKdxNHDv95HCU1SKnpFS5Z6P_r1eGLKCUJ8pw14m-zz2f2cA/exec',
+    'https://script.google.com/macros/s/AKfycbw9JomeIxrR-eGwre2a0CbPXnrsd69N1Mryn3dxvqCozy2wCMntuChtqpnt_STgkBG6kA/exec',
 };
