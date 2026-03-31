@@ -154,13 +154,13 @@ export function ListScreen() {
         </div>
 
         {/* Main tabs: Пасажири | Посилки */}
-        <div className="flex gap-2 mb-3">
+        <div className="flex gap-2 mb-2.5">
           {mainTabs.map((t) => (
             <button key={t.key} onClick={() => setViewTab(t.key)}
-              className={`flex-1 py-3 rounded-2xl text-sm font-bold text-center cursor-pointer transition-all ${
-                activeMainTab === t.key ? 'bg-brand text-white shadow-md' : 'bg-gray-100 text-gray-400'
+              className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold text-center cursor-pointer transition-all ${
+                activeMainTab === t.key ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
               }`}>
-              <t.icon className="w-4.5 h-4.5 inline mr-1.5 -mt-0.5" />{t.label}
+              <t.icon className="w-4 h-4 inline mr-1.5 -mt-0.5" />{t.label}
             </button>
           ))}
         </div>

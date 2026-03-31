@@ -27,7 +27,8 @@ export function PassengerCard({ passenger: p, index }: Props) {
   const [expanded, setExpanded] = useState(false);
 
   const show = (col: string) => !hiddenCols.has(col);
-  const status = getStatus(p._statusKey);
+  const rawStatus = getStatus(p._statusKey);
+  const status: ItemStatus = rawStatus in stLabel ? rawStatus : 'pending';
   const canUndo = status === 'completed' || status === 'cancelled';
   const routeName = isUnifiedView && p._sourceRoute ? p._sourceRoute : currentSheet;
   const sl = stLabel[status];
