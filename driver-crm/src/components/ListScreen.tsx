@@ -255,7 +255,6 @@ export function ListScreen() {
                 </button>
               );
             })}
-            ))}
           </div>
         )}
       </div>
