@@ -160,16 +160,11 @@ export function ListScreen() {
     { key: 'cancelled', label: 'Скас.', count: stats.cancelled, pill: 'bg-red-50 text-red-400', pillActive: 'bg-red-500 text-white' },
   ];
 
-  const mainTabs: { key: 'all' | 'passengers' | 'packages'; label: string; icon: typeof Users }[] = isUnifiedView
-    ? [
-        { key: 'all', label: 'Усі', icon: LayoutGrid },
-        { key: 'passengers', label: 'Пасажири', icon: Users },
-        { key: 'packages', label: 'Посилки', icon: Package },
-      ]
-    : [
-        { key: 'passengers', label: 'Пасажири', icon: Users },
-        { key: 'packages', label: 'Посилки', icon: Package },
-      ];
+  const mainTabs: { key: 'all' | 'passengers' | 'packages'; label: string; icon: typeof Users }[] = [
+    { key: 'all', label: 'Усі', icon: LayoutGrid },
+    { key: 'passengers', label: 'Пасажири', icon: Users },
+    { key: 'packages', label: 'Посилки', icon: Package },
+  ];
 
   const showShipping = viewTab === 'shipping';
   const showAllTab = viewTab === 'all';

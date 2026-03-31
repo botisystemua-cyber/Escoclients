@@ -52,7 +52,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setIsUnifiedView(unified);
     setStatusFilter('all');
     setRouteFilter('all');
-    setViewTab('passengers');
+    setViewTab('all');
     setStatuses(loadStatuses(sheet));
     setCurrentScreen('list');
   }, []);
