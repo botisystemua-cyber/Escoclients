@@ -1,10 +1,6 @@
 export const CONFIG = {
   COMPANY_NAME: 'BotiLogistics',
-  // Cargo API — Google Apps Script деплой
+  // Єдиний API — Google Apps Script деплой для Marhrut_Test
   API_URL:
-    'https://script.google.com/macros/s/AKfycby7oPBtxQM4JVfuR40gAVun-pNLyomkEGPvJg4mdnAVwEH0XS5hZItnNQJ0JSfhITu2/exec',
-  // Passengers API — Google Apps Script деплой
-  // Замініть на URL після деплою Script-passengers-marshrut.gs
-  PASSENGER_API_URL:
-    'https://script.google.com/macros/s/AKfycbyji3k9u0j3t89FahuOt-lKbJyNtfUsUOc-AOf6HrxD1XJh0QjsPBPmslv6bUo6O4ku/exec',
+    'PASTE_DEPLOY_URL_HERE',
 };

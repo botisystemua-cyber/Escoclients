@@ -9,85 +9,92 @@ export interface ShippingRoute {
   count: number;
 }
 
-export interface Delivery {
-  internalNumber: string;
-  id?: string;
-  name?: string;
-  address?: string;
-  ttn?: string;
-  weight?: string;
-  direction?: string;
-  phone?: string;
-  registrarPhone?: string;
-  price?: string;
-  amount?: string;
-  payment?: string;
-  paymentStatus?: string;
-  payStatus?: string;
-  parcelStatus?: string;
-  status?: string;
-  timing?: string;
-  createdAt?: string;
-  receiveDate?: string;
-  note?: string;
-  smsNote?: string;
-  photo?: string;
-  vehicle?: string;
-  coords?: { lat: number; lng: number };
+// Спільні поля для пасажира та посилки (з одного маршрутного листа)
+interface RouteItemBase {
+  rowNum: number;
+  rteId: string;
+  type: string;           // "Пасажир" | "Посилка"
+  direction: string;
+  itemId: string;         // PAX_ID / PKG_ID
+  dateCreated: string;
+  dateTrip: string;
+  timing: string;
+  autoNum: string;
+  driver: string;
+  city: string;
+  amount: string;
+  currency: string;
+  deposit: string;
+  depositCurrency: string;
+  payForm: string;
+  payStatus: string;
+  debt: string;
+  payNote: string;
+  status: string;
+  statusCrm: string;
+  tag: string;
+  note: string;
+  smsNote: string;
+  sheet: string;
   _statusKey: string;
   _sourceRoute?: string;
-  driverStatus?: string;
 }
 
-export interface Passenger {
-  rowNum: number;
-  id?: string;
+export interface Passenger extends RouteItemBase {
   name: string;
   phone: string;
-  from: string;
-  to: string;
-  date?: string;
-  seats?: string;
-  weight?: string;
-  mark?: string;
-  payment?: string;
-  percent?: string;
-  dispatcher?: string;
-  phoneReg?: string;
-  timing?: string;
-  dateReg?: string;
-  note?: string;
-  vehicle?: string;
-  driverStatus?: string;
-  _statusKey: string;
-  _sourceRoute?: string;
+  addrFrom: string;
+  addrTo: string;
+  seatsCount: string;
+  baggageWeight: string;
+  seat: string;
+}
+
+export interface Package extends RouteItemBase {
+  senderName: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientAddr: string;
+  internalNum: string;
+  ttn: string;
+  pkgDesc: string;
+  pkgWeight: string;
 }
 
 export interface ShippingItem {
   rowNum: number;
-  name: string;
-  number: string;
-  city: string;
-  description?: string;
-  weight?: string;
-  amount?: string;
-  payType?: string;
-  currency?: string;
-  envelope?: string;
-  phone?: string;
+  dispatchId: string;
+  dateCreated: string;
+  dateTrip: string;
+  autoNum: string;
+  driver: string;
+  senderPhone: string;
+  senderName: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientAddr: string;
+  internalNum: string;
+  weight: string;
+  description: string;
+  photo: string;
+  amount: string;
+  currency: string;
+  deposit: string;
+  payForm: string;
+  payStatus: string;
+  debt: string;
+  status: string;
+  pkgId: string;
+  note: string;
   sheet: string;
 }
 
+export type RouteItem = Passenger | Package;
+
 export type ItemStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
 
-export type RouteType = 'delivery' | 'passenger';
+export type RouteType = 'route';  // one type now — route contains both pax + pkg
 
 export type StatusFilter = 'all' | ItemStatus;
 
-export interface AppState {
-  driverName: string;
-  currentScreen: 'login' | 'routes' | 'list';
-  currentSheet: string;
-  currentRouteType: RouteType;
-  isUnifiedView: boolean;
-}
+export type ViewTab = 'passengers' | 'packages' | 'shipping';
