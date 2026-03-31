@@ -1781,7 +1781,7 @@ function apiGetRoutesList(params) {
     result.push({ sheetName: sheetName, rowCount: rowCount, paxCount: paxCount, parcelCount: parcelCount });
   }
 
-  cache.put(cacheKey, JSON.stringify(result), 300);
+  cache.put(cacheKey, JSON.stringify(result), 30);
   return { ok: true, data: result };
 }
 
@@ -1843,8 +1843,8 @@ function apiGetRouteSheet(params) {
     rowCount: rows.length
   };
 
-  // Кеш на 3 хв (дані маршруту можуть змінюватись частіше)
-  try { cache.put(cacheKey, JSON.stringify(result), 180); } catch(e) { /* занадто великий для кешу */ }
+  // Кеш на 30 сек (водій може змінити дані через свій додаток)
+  try { cache.put(cacheKey, JSON.stringify(result), 30); } catch(e) { /* занадто великий для кешу */ }
   return { ok: true, data: result };
 }
 
