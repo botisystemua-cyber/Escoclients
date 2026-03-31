@@ -115,8 +115,14 @@ function buildCommon(row: string[], sheetName: string, rowNum: number) {
   };
 }
 
-// ---- Routes (from config, instant) ----
-export function fetchRoutes(): { routes: Route[]; shipping: ShippingRoute[] } {
+// ---- Routes (fetch real counts from Apps Script) ----
+export async function fetchRoutes(): Promise<{ routes: Route[]; shipping: ShippingRoute[] }> {
+  try {
+    const response = await fetch(CONFIG.API_URL + '?action=getAvailableRoutes');
+    const text = await response.text();
+    const data = JSON.parse(text);
+    if (data.success) return { routes: data.routes, shipping: data.shipping };
+  } catch { /* fallback to config */ }
   return {
     routes: CONFIG.ROUTES.map((name) => ({ name, count: 0 })),
     shipping: CONFIG.SHIPPING.map((s) => ({ ...s, count: 0 })),

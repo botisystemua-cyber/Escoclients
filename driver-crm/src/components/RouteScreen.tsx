@@ -1,18 +1,24 @@
-import { useEffect } from 'react';
-import { Package, LogOut, ChevronRight, Layers } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Package, LogOut, ChevronRight, Layers, RefreshCw } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
 import { fetchRoutes } from '../api';
 import { BotiLogo } from './BotiLogo';
 
 export function RouteScreen() {
   const { driverName, setDriverName, setCurrentScreen, openRoute, routes, setRoutes, setShippingRoutes, showToast } = useApp();
-  useEffect(() => {
-    if (routes.length === 0) {
-      const data = fetchRoutes();
+  const [loading, setLoading] = useState(false);
+
+  const loadRoutes = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchRoutes();
       setRoutes(data.routes);
       setShippingRoutes(data.shipping);
-    }
-  }, []);
+    } catch { /* fallback handled inside fetchRoutes */ }
+    finally { setLoading(false); }
+  };
+
+  useEffect(() => { loadRoutes(); }, []);
 
   const logout = () => { setDriverName(''); localStorage.removeItem('driverName'); setCurrentScreen('login'); };
 
