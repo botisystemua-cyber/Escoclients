@@ -64,6 +64,11 @@ export function RouteScreen() {
               </button>
             ))}
           </>
+        ) : loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <RefreshCw className="w-7 h-7 text-brand animate-spin mb-3" />
+            <p className="text-muted text-sm">Завантаження маршрутів...</p>
+          </div>
         ) : (
           <p className="text-center text-muted text-sm py-10">Маршрутів не знайдено</p>
         )}
