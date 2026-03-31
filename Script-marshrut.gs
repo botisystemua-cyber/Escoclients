@@ -171,6 +171,8 @@ function doPost(e) {
         return respond(getShippingItems(payload.sheetName || ''));
       case 'updateDriverStatus':
         return respond(handleDriverStatusUpdate(data));
+      case 'addRouteItem':
+        return respond(handleAddRouteItem(data));
       default:
         return respond({ success: false, error: 'Невідома дія: ' + action });
     }
@@ -462,6 +464,81 @@ function handleDriverStatusUpdate(data) {
 
     if (rowsUpdated === 0) return { success: true, message: 'Логовано (запис не знайдено)' };
     return { success: true, message: 'Статус записано', updatedRows: rowsUpdated };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+// ============================================
+// handleAddRouteItem — водій додає пасажира або посилку
+// ============================================
+function handleAddRouteItem(data) {
+  try {
+    var routeName = data.routeName;
+    if (!routeName || !/^Маршрут_\d+$/.test(routeName)) {
+      return { success: false, error: 'Невалідний маршрут: ' + (routeName || '(пусто)') };
+    }
+
+    var itemType = (data.itemType || '').toLowerCase();
+    if (itemType !== 'пасажир' && itemType !== 'посилка') {
+      return { success: false, error: 'Невалідний тип: ' + (data.itemType || '(пусто)') };
+    }
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(routeName);
+    if (!sheet) return { success: false, error: 'Аркуш не знайдено: ' + routeName };
+
+    var now = new Date();
+    var dateStr = Utilities.formatDate(now, 'Europe/Kiev', 'yyyy-MM-dd');
+    var timeStr = Utilities.formatDate(now, 'Europe/Kiev', 'HH:mm:ss');
+
+    // Генеруємо ID
+    var prefix = itemType === 'пасажир' ? 'PAX' : 'PKG';
+    var itemId = prefix + '_' + dateStr.replace(/-/g, '') + '_' + timeStr.replace(/:/g, '');
+
+    // Створюємо рядок (50 колонок)
+    var row = new Array(TOTAL_COLS).fill('');
+    row[COL.TYPE] = itemType === 'пасажир' ? 'Пасажир' : 'Посилка';
+    row[COL.ITEM_ID] = itemId;
+    row[COL.DATE_CREATED] = dateStr;
+    row[COL.DATE_TRIP] = data.dateTrip || '';
+    row[COL.DRIVER] = data.driverName || '';
+    row[COL.CITY] = data.city || '';
+    row[COL.AMOUNT] = data.amount || '';
+    row[COL.CURRENCY] = data.currency || 'UAH';
+    row[COL.PAY_FORM] = data.payForm || '';
+    row[COL.STATUS] = 'pending';
+    row[COL.NOTE] = data.note || '';
+
+    if (itemType === 'пасажир') {
+      row[COL.PAX_NAME] = data.name || '';
+      row[COL.PAX_PHONE] = data.phone || '';
+      row[COL.ADDR_FROM] = data.addrFrom || '';
+      row[COL.ADDR_TO] = data.addrTo || '';
+      row[COL.SEATS_COUNT] = data.seatsCount || '1';
+      row[COL.BAGGAGE_WEIGHT] = data.baggageWeight || '';
+    } else {
+      row[COL.SENDER_NAME] = data.senderName || '';
+      row[COL.RECIPIENT_NAME] = data.recipientName || '';
+      row[COL.RECIPIENT_PHONE] = data.recipientPhone || '';
+      row[COL.RECIPIENT_ADDR] = data.recipientAddr || '';
+      row[COL.PKG_DESC] = data.pkgDesc || '';
+      row[COL.PKG_WEIGHT] = data.pkgWeight || '';
+      row[COL.TTN] = data.ttn || '';
+    }
+
+    sheet.appendRow(row);
+
+    // Логуємо
+    var logSheet = ss.getSheetByName(SHEET_LOGS);
+    if (logSheet) {
+      logSheet.appendRow([
+        dateStr, timeStr, data.driverName || '', routeName, itemId,
+        data.itemType || '', 'added', '', ''
+      ]);
+    }
+
+    return { success: true, message: 'Додано ' + (itemType === 'пасажир' ? 'пасажира' : 'посилку'), itemId: itemId };
   } catch (err) {
     return { success: false, error: err.toString() };
   }

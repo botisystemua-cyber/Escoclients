@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   ArrowLeft, RefreshCw, Package, Users, Truck, BarChart3,
-  Settings, ListFilter, LayoutGrid,
+  ListFilter, LayoutGrid,
 } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
 import { fetchPassengers, fetchPackages, fetchShippingItems } from '../api';
@@ -9,6 +9,9 @@ import { PassengerCard } from './PassengerCard';
 import { PackageCard } from './PackageCard';
 import { ShippingCard } from './ShippingCard';
 import { ColumnEditor } from './ColumnEditor';
+import { BottomNav } from './BottomNav';
+import { AddItemModal } from './AddItemModal';
+import { SearchModal } from './SearchModal';
 import type { Passenger, Package as Pkg, ShippingItem, ItemStatus, StatusFilter, ViewTab } from '../types';
 
 export function ListScreen() {
@@ -25,10 +28,11 @@ export function ListScreen() {
   const [loading, setLoading] = useState(true);
   const [loadedTabs, setLoadedTabs] = useState<Set<ViewTab>>(new Set());
   const [showColumnEditor, setShowColumnEditor] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const routeNum = currentSheet.replace('Маршрут_', '');
   const shippingSheetName = shippingRoutes.find((s) => s.name === 'Відправка_' + routeNum)?.name || '';
-  // Show shipping sub-tabs when in packages mode (both unified and single route)
   const hasShipping = !!shippingSheetName || isUnifiedView;
 
   const isPackagesMode = viewTab === 'packages' || viewTab === 'shipping';
@@ -36,9 +40,7 @@ export function ListScreen() {
 
   // Load data for current tab only
   const loadCurrentTab = useCallback(async (tab: ViewTab, force = false) => {
-    // 'all' tab needs both passengers and packages loaded
     const tabsToLoad: ViewTab[] = tab === 'all' ? ['passengers', 'packages'] : [tab];
-
     const needsLoad = tabsToLoad.some((t) => force || !loadedTabs.has(t));
     if (!needsLoad) return;
 
@@ -102,12 +104,11 @@ export function ListScreen() {
       if (tab === 'all') showToast('Завантажено усе');
       else if (tab === 'passengers') showToast('Завантажено пасажирів');
       else if (tab === 'packages') showToast('Завантажено посилок');
-      else if (tab === 'shipping') showToast(`Відправлення завантажено`);
+      else if (tab === 'shipping') showToast('Відправлення завантажено');
     } catch (err) { showToast('Помилка: ' + (err as Error).message); }
     finally { setLoading(false); }
   }, [currentSheet, isUnifiedView, shippingSheetName, loadedTabs, routes, shippingRoutes, setStatus, showToast]);
 
-  // Load on mount and on tab change
   useEffect(() => { loadCurrentTab(viewTab); }, [viewTab, loadCurrentTab]);
 
   const refresh = () => {
@@ -125,19 +126,14 @@ export function ListScreen() {
 
   const filteredPassengers = filterItems(passengers);
   const filteredPackages = filterItems(packages);
-
   const currentItems = viewTab === 'passengers' || viewTab === 'all' ? filteredPassengers : viewTab === 'packages' ? filteredPackages : [];
-  const currentPkgItems = viewTab === 'all' ? filteredPackages : [];
 
-  // Stats — for 'all' tab combine both
+  // Stats
   const allStatsItems = viewTab === 'all'
     ? [...passengers, ...packages] as { _statusKey: string; _sourceRoute?: string }[]
-    : viewTab === 'passengers'
-      ? passengers
-      : packages;
+    : viewTab === 'passengers' ? passengers : packages;
   const statsBase = isUnifiedView && routeFilter !== 'all'
-    ? allStatsItems.filter((i) => i._sourceRoute === routeFilter)
-    : allStatsItems;
+    ? allStatsItems.filter((i) => i._sourceRoute === routeFilter) : allStatsItems;
 
   const stats = {
     total: statsBase.length,
@@ -146,7 +142,6 @@ export function ListScreen() {
     cancelled: statsBase.filter((i) => getStatus(i._statusKey) === 'cancelled').length,
   };
 
-  // Route count for tabs — depends on current view
   const countSource = viewTab === 'all' ? [...passengers, ...packages] as { _sourceRoute?: string }[] : viewTab === 'passengers' ? passengers : packages;
   const routeTabs = isUnifiedView
     ? [{ name: 'all', label: 'Усі', count: countSource.length },
@@ -176,6 +171,7 @@ export function ListScreen() {
 
   return (
     <div className="flex-1 flex flex-col bg-bg max-h-dvh overflow-hidden">
+      {/* Header */}
       <div className="bg-white border-b border-border px-4 pt-4 pb-3 shrink-0">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2.5">
@@ -187,17 +183,9 @@ export function ListScreen() {
               <span className="text-sm font-bold text-text">{isUnifiedView ? 'Усі маршрути' : currentSheet}</span>
             </div>
           </div>
-          <div className="flex gap-1">
-            <button onClick={() => setShowColumnEditor(true)} className="p-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
-              <Settings className="w-5 h-5 text-muted" />
-            </button>
-            <button onClick={refresh} className="p-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
-              <RefreshCw className={`w-5 h-5 text-muted ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
         </div>
 
-        {/* Main tabs: Усі | Пасажири | Посилки */}
+        {/* Main tabs */}
         <div className="flex gap-2 mb-2.5">
           {mainTabs.map((t) => (
             <button key={t.key} onClick={() => setViewTab(t.key === 'all' ? 'all' : t.key)}
@@ -209,7 +197,7 @@ export function ListScreen() {
           ))}
         </div>
 
-        {/* Sub-tabs: Отримання | Відправка (in packages mode, both unified and single) */}
+        {/* Sub-tabs: Отримання | Відправка */}
         {isPackagesMode && hasShipping && (
           <div className="flex items-center gap-1 mb-2 bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setViewTab('packages')}
@@ -260,7 +248,7 @@ export function ListScreen() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 pb-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 py-3 pb-3 space-y-4">
         {loading && !loadedTabs.has(viewTab === 'all' ? 'passengers' : viewTab) ? (
           <div className="flex flex-col items-center justify-center py-16">
             <RefreshCw className="w-7 h-7 text-brand animate-spin mb-3" />
@@ -310,7 +298,19 @@ export function ListScreen() {
         )}
       </div>
 
+      {/* Bottom Nav */}
+      <BottomNav
+        onAdd={() => setShowAddModal(true)}
+        onSearch={() => setShowSearch(true)}
+        onColumns={() => setShowColumnEditor(true)}
+        onRefresh={refresh}
+        loading={loading}
+      />
+
+      {/* Modals */}
       {showColumnEditor && <ColumnEditor onClose={() => setShowColumnEditor(false)} />}
+      {showAddModal && <AddItemModal onClose={() => setShowAddModal(false)} onAdded={refresh} />}
+      {showSearch && <SearchModal passengers={passengers} packages={packages} onClose={() => setShowSearch(false)} />}
     </div>
   );
 }
