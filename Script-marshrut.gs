@@ -174,36 +174,24 @@ function doPost(e) {
 // ============================================
 // getAvailableRoutes — динамічний список
 // ============================================
+// Маршрути відомі заздалегідь — не скануємо таблицю (занадто повільно)
+var KNOWN_ROUTES = ['Маршрут_1', 'Маршрут_2', 'Маршрут_3'];
+var KNOWN_SHIPPING = [
+  { name: 'Відправка_1', label: 'Відправка 1' },
+  { name: 'Відправка_2', label: 'Відправка 2' },
+  { name: 'Відправка_3', label: 'Відправка 3' },
+];
+
 function getAvailableRoutes() {
-  try {
-    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
-    var sheets = ss.getSheets();
-    var routes = [];
-    var shipping = [];
-
-    for (var i = 0; i < sheets.length; i++) {
-      var name = sheets[i].getName();
-      var nameLower = name.toLowerCase();
-
-      var skip = false;
-      for (var e = 0; e < EXCLUDE_PATTERNS.length; e++) {
-        if (nameLower.indexOf(EXCLUDE_PATTERNS[e]) !== -1) { skip = true; break; }
-      }
-      if (skip) continue;
-
-      // Не рахуємо рядки тут — це дуже повільно для великих таблиць
-      if (nameLower.indexOf('маршрут') !== -1) {
-        routes.push({ name: name, count: 0 });
-      } else if (nameLower.indexOf('відправка') !== -1) {
-        var label = name.replace('Відправка_', 'Відправка ');
-        shipping.push({ name: name, label: label, count: 0 });
-      }
-    }
-
-    return { success: true, routes: routes, shipping: shipping };
-  } catch (err) {
-    return { success: false, error: err.toString() };
+  var routes = [];
+  for (var i = 0; i < KNOWN_ROUTES.length; i++) {
+    routes.push({ name: KNOWN_ROUTES[i], count: 0 });
   }
+  var shipping = [];
+  for (var j = 0; j < KNOWN_SHIPPING.length; j++) {
+    shipping.push({ name: KNOWN_SHIPPING[j].name, label: KNOWN_SHIPPING[j].label, count: 0 });
+  }
+  return { success: true, routes: routes, shipping: shipping };
 }
 
 // ============================================
