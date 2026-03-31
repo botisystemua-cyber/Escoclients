@@ -153,6 +153,9 @@ function doGet(e) {
 // ============================================
 function doPost(e) {
   try {
+    if (!e || !e.postData || !e.postData.contents) {
+      return respond({ success: false, error: 'Порожній запит (немає postData)' });
+    }
     var data = JSON.parse(e.postData.contents);
     var action = data.action;
     var payload = data.payload || data;
@@ -188,13 +191,24 @@ var KNOWN_SHIPPING = [
 ];
 
 function getAvailableRoutes() {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var routes = [];
   for (var i = 0; i < KNOWN_ROUTES.length; i++) {
-    routes.push({ name: KNOWN_ROUTES[i], count: 0 });
+    var count = 0;
+    try {
+      var sheet = ss.getSheetByName(KNOWN_ROUTES[i]);
+      if (sheet) count = Math.max(0, sheet.getLastRow() - 1);
+    } catch (e) { /* sheet not found */ }
+    routes.push({ name: KNOWN_ROUTES[i], count: count });
   }
   var shipping = [];
   for (var j = 0; j < KNOWN_SHIPPING.length; j++) {
-    shipping.push({ name: KNOWN_SHIPPING[j].name, label: KNOWN_SHIPPING[j].label, count: 0 });
+    var sCount = 0;
+    try {
+      var sSheet = ss.getSheetByName(KNOWN_SHIPPING[j].name);
+      if (sSheet) sCount = Math.max(0, sSheet.getLastRow() - 1);
+    } catch (e) { /* sheet not found */ }
+    shipping.push({ name: KNOWN_SHIPPING[j].name, label: KNOWN_SHIPPING[j].label, count: sCount });
   }
   return { success: true, routes: routes, shipping: shipping };
 }
@@ -203,8 +217,17 @@ function getAvailableRoutes() {
 // Допоміжна — читає рядки одного типу з маршрутного листа
 // typeFilter: 'пасажир' або 'посилка'
 // ============================================
+function isExcludedSheet_(name) {
+  var lower = name.toLowerCase();
+  for (var i = 0; i < EXCLUDE_PATTERNS.length; i++) {
+    if (lower.indexOf(EXCLUDE_PATTERNS[i]) !== -1) return true;
+  }
+  return false;
+}
+
 function readRouteByType_(sheetName, typeFilter) {
   if (!sheetName) return { success: false, error: 'Не вказано маршрут' };
+  if (isExcludedSheet_(sheetName)) return { success: false, error: 'Аркуш заборонено читати: ' + sheetName };
 
   var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   var sheet = ss.getSheetByName(sheetName);
@@ -292,6 +315,7 @@ function getPackages(sheetName) {
 function getShippingItems(sheetName) {
   try {
     if (!sheetName) return { success: false, error: 'Не вказано маршрут' };
+    if (isExcludedSheet_(sheetName)) return { success: false, error: 'Аркуш заборонено читати: ' + sheetName };
 
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(sheetName);
@@ -357,8 +381,20 @@ function getShippingItems(sheetName) {
 // handleDriverStatusUpdate — водій змінює "Статус" (col AK)
 // Шукає за ITEM_ID (PAX_ID / PKG_ID)
 // ============================================
+var VALID_STATUSES = ['pending', 'in-progress', 'completed', 'cancelled'];
+
 function handleDriverStatusUpdate(data) {
   try {
+    // Валідація статусу
+    if (!data.status || VALID_STATUSES.indexOf(data.status) === -1) {
+      return { success: false, error: 'Невалідний статус: ' + (data.status || '(пусто)') + '. Допустимі: ' + VALID_STATUSES.join(', ') };
+    }
+
+    // Валідація маршруту — дозволяємо тільки Маршрут_*
+    if (!data.routeName || !/^Маршрут_\d+$/.test(data.routeName)) {
+      return { success: false, error: 'Невалідний маршрут: ' + (data.routeName || '(пусто)') };
+    }
+
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var now = new Date();
 

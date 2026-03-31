@@ -34,7 +34,7 @@ export function PassengerCard({ passenger: p, index }: Props) {
 
   const doStatus = async (ns: ItemStatus) => {
     setStatus(p._statusKey, ns);
-    try { await updateItemStatus(driverName, routeName, p, ns); showToast(sl.t + '!'); }
+    try { await updateItemStatus(driverName, routeName, p, ns); showToast(stLabel[ns].t + '!'); }
     catch (e) { showToast('Помилка: ' + (e as Error).message); }
   };
   const doCancel = async () => {

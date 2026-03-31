@@ -75,7 +75,7 @@ const CS = {
   AUTO_NUM: 5, DRIVER: 6, SENDER_PHONE: 9, SENDER_NAME: 10,
   RECIPIENT_NAME: 11, RECIPIENT_PHONE: 12, RECIPIENT_ADDR: 13,
   INTERNAL_NUM: 14, WEIGHT: 15, DESCRIPTION: 16, PHOTO: 17,
-  AMOUNT: 18, CURRENCY: 19, DEPOSIT: 20, PAY_FORM: 22,
+  AMOUNT: 18, CURRENCY: 19, DEPOSIT: 20, DEPOSIT_CURRENCY: 21, PAY_FORM: 22,
   PAY_STATUS: 23, DEBT: 24, STATUS: 25, PKG_ID: 26, NOTE: 27,
 };
 
@@ -202,6 +202,7 @@ export async function fetchShippingItems(sheetName: string): Promise<ShippingIte
       amount: val(row, CS.AMOUNT),
       currency: val(row, CS.CURRENCY),
       deposit: val(row, CS.DEPOSIT),
+      depositCurrency: val(row, CS.DEPOSIT_CURRENCY),
       payForm: val(row, CS.PAY_FORM),
       payStatus: val(row, CS.PAY_STATUS),
       debt: val(row, CS.DEBT),

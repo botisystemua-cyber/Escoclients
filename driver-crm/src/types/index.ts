@@ -80,6 +80,7 @@ export interface ShippingItem {
   amount: string;
   currency: string;
   deposit: string;
+  depositCurrency: string;
   payForm: string;
   payStatus: string;
   debt: string;
