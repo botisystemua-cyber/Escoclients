@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   ArrowLeft, RefreshCw, Package, Users, Truck, BarChart3,
-  Settings, ListFilter,
+  Settings, ListFilter, LayoutGrid,
 } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
 import { fetchPassengers, fetchPackages, fetchShippingItems } from '../api';
@@ -28,61 +28,86 @@ export function ListScreen() {
 
   const routeNum = currentSheet.replace('Маршрут_', '');
   const shippingSheetName = shippingRoutes.find((s) => s.name === 'Відправка_' + routeNum)?.name || '';
-  const hasShipping = !!shippingSheetName && !isUnifiedView;
+  // Show shipping sub-tabs when in packages mode (both unified and single route)
+  const hasShipping = !!shippingSheetName || isUnifiedView;
 
   const isPackagesMode = viewTab === 'packages' || viewTab === 'shipping';
-  const activeMainTab: 'passengers' | 'packages' = isPackagesMode ? 'packages' : 'passengers';
+  const activeMainTab: 'all' | 'passengers' | 'packages' = viewTab === 'all' ? 'all' : isPackagesMode ? 'packages' : 'passengers';
 
   // Load data for current tab only
   const loadCurrentTab = useCallback(async (tab: ViewTab, force = false) => {
-    if (!force && loadedTabs.has(tab)) return; // already loaded
+    // 'all' tab needs both passengers and packages loaded
+    const tabsToLoad: ViewTab[] = tab === 'all' ? ['passengers', 'packages'] : [tab];
+
+    const needsLoad = tabsToLoad.some((t) => force || !loadedTabs.has(t));
+    if (!needsLoad) return;
+
     setLoading(true);
     try {
-      if (tab === 'passengers') {
-        if (isUnifiedView && routes.length > 0) {
-          const all: Passenger[] = [];
-          for (const route of routes) {
-            try {
-              const items = await fetchPassengers(route.name);
-              all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
-            } catch { /* skip failed route */ }
+      for (const loadTab of tabsToLoad) {
+        if (!force && loadedTabs.has(loadTab)) continue;
+
+        if (loadTab === 'passengers') {
+          if (isUnifiedView && routes.length > 0) {
+            const all: Passenger[] = [];
+            for (const route of routes) {
+              try {
+                const items = await fetchPassengers(route.name);
+                all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
+              } catch { /* skip failed route */ }
+            }
+            all.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
+            setPassengers(all);
+          } else if (!isUnifiedView) {
+            const items = await fetchPassengers(currentSheet);
+            items.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
+            setPassengers(items);
           }
-          all.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
-          setPassengers(all);
-        } else if (!isUnifiedView) {
-          const items = await fetchPassengers(currentSheet);
-          items.forEach((p, i) => { p._statusKey = `pax_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
-          setPassengers(items);
-        }
-        showToast('Завантажено пасажирів');
-      } else if (tab === 'packages') {
-        if (isUnifiedView && routes.length > 0) {
-          const all: Pkg[] = [];
-          for (const route of routes) {
-            try {
-              const items = await fetchPackages(route.name);
-              all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
-            } catch { /* skip failed route */ }
+        } else if (loadTab === 'packages') {
+          if (isUnifiedView && routes.length > 0) {
+            const all: Pkg[] = [];
+            for (const route of routes) {
+              try {
+                const items = await fetchPackages(route.name);
+                all.push(...items.map((p) => ({ ...p, _sourceRoute: route.name })));
+              } catch { /* skip failed route */ }
+            }
+            all.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
+            setPackages(all);
+          } else if (!isUnifiedView) {
+            const items = await fetchPackages(currentSheet);
+            items.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
+            setPackages(items);
           }
-          all.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${p._sourceRoute}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
-          setPackages(all);
-        } else if (!isUnifiedView) {
-          const items = await fetchPackages(currentSheet);
-          items.forEach((p, i) => { p._statusKey = `pkg_${p.itemId}_${i}`; if (p.status && p.status !== 'pending') setStatus(p._statusKey, p.status as ItemStatus); });
-          setPackages(items);
+        } else if (loadTab === 'shipping') {
+          if (isUnifiedView && routes.length > 0) {
+            const all: ShippingItem[] = [];
+            for (let ri = 0; ri < routes.length; ri++) {
+              const sName = shippingRoutes.find((s) => s.name === 'Відправка_' + (ri + 1))?.name;
+              if (!sName) continue;
+              try {
+                const items = await fetchShippingItems(sName);
+                all.push(...items);
+              } catch { /* skip */ }
+            }
+            setShippingItems(all);
+          } else if (shippingSheetName) {
+            const items = await fetchShippingItems(shippingSheetName);
+            setShippingItems(items);
+          }
         }
-        showToast('Завантажено посилок');
-      } else if (tab === 'shipping' && shippingSheetName) {
-        const items = await fetchShippingItems(shippingSheetName);
-        setShippingItems(items);
-        showToast(`${items.length} відправлень`);
+
+        setLoadedTabs((prev) => new Set(prev).add(loadTab));
       }
-      setLoadedTabs((prev) => new Set(prev).add(tab));
+      if (tab === 'all') showToast('Завантажено усе');
+      else if (tab === 'passengers') showToast('Завантажено пасажирів');
+      else if (tab === 'packages') showToast('Завантажено посилок');
+      else if (tab === 'shipping') showToast(`Відправлення завантажено`);
     } catch (err) { showToast('Помилка: ' + (err as Error).message); }
     finally { setLoading(false); }
-  }, [currentSheet, isUnifiedView, shippingSheetName, loadedTabs, routes, setStatus, showToast]);
+  }, [currentSheet, isUnifiedView, shippingSheetName, loadedTabs, routes, shippingRoutes, setStatus, showToast]);
 
-  // Load on mount (passengers first) and on tab change
+  // Load on mount and on tab change
   useEffect(() => { loadCurrentTab(viewTab); }, [viewTab, loadCurrentTab]);
 
   const refresh = () => {
@@ -98,11 +123,21 @@ export function ListScreen() {
     return filtered;
   };
 
-  const currentItems = viewTab === 'passengers' ? filterItems(passengers) : viewTab === 'packages' ? filterItems(packages) : [];
+  const filteredPassengers = filterItems(passengers);
+  const filteredPackages = filterItems(packages);
 
-  const statsBase = viewTab === 'passengers'
-    ? (isUnifiedView && routeFilter !== 'all' ? passengers.filter((i) => i._sourceRoute === routeFilter) : passengers)
-    : (isUnifiedView && routeFilter !== 'all' ? packages.filter((i) => i._sourceRoute === routeFilter) : packages);
+  const currentItems = viewTab === 'passengers' || viewTab === 'all' ? filteredPassengers : viewTab === 'packages' ? filteredPackages : [];
+  const currentPkgItems = viewTab === 'all' ? filteredPackages : [];
+
+  // Stats — for 'all' tab combine both
+  const allStatsItems = viewTab === 'all'
+    ? [...passengers, ...packages] as { _statusKey: string; _sourceRoute?: string }[]
+    : viewTab === 'passengers'
+      ? passengers
+      : packages;
+  const statsBase = isUnifiedView && routeFilter !== 'all'
+    ? allStatsItems.filter((i) => i._sourceRoute === routeFilter)
+    : allStatsItems;
 
   const stats = {
     total: statsBase.length,
@@ -111,9 +146,11 @@ export function ListScreen() {
     cancelled: statsBase.filter((i) => getStatus(i._statusKey) === 'cancelled').length,
   };
 
+  // Route count for tabs — depends on current view
+  const countSource = viewTab === 'all' ? [...passengers, ...packages] as { _sourceRoute?: string }[] : viewTab === 'passengers' ? passengers : packages;
   const routeTabs = isUnifiedView
-    ? [{ name: 'all', label: 'Усі', count: (viewTab === 'passengers' ? passengers : packages).length },
-       ...routes.map((r) => ({ name: r.name, label: r.name, count: (viewTab === 'passengers' ? passengers : packages).filter((i) => i._sourceRoute === r.name).length }))]
+    ? [{ name: 'all', label: 'Усі', count: countSource.length },
+       ...routes.map((r) => ({ name: r.name, label: r.name.replace('Маршрут_', 'М'), count: countSource.filter((i) => i._sourceRoute === r.name).length }))]
     : [];
 
   const filters: { key: StatusFilter; label: string; count: number; pill: string; pillActive: string }[] = [
@@ -123,12 +160,19 @@ export function ListScreen() {
     { key: 'cancelled', label: 'Скас.', count: stats.cancelled, pill: 'bg-red-50 text-red-400', pillActive: 'bg-red-500 text-white' },
   ];
 
-  const mainTabs: { key: ViewTab; label: string; icon: typeof Users }[] = [
-    { key: 'passengers', label: 'Пасажири', icon: Users },
-    { key: 'packages', label: 'Посилки', icon: Package },
-  ];
+  const mainTabs: { key: 'all' | 'passengers' | 'packages'; label: string; icon: typeof Users }[] = isUnifiedView
+    ? [
+        { key: 'all', label: 'Усі', icon: LayoutGrid },
+        { key: 'passengers', label: 'Пасажири', icon: Users },
+        { key: 'packages', label: 'Посилки', icon: Package },
+      ]
+    : [
+        { key: 'passengers', label: 'Пасажири', icon: Users },
+        { key: 'packages', label: 'Посилки', icon: Package },
+      ];
 
   const showShipping = viewTab === 'shipping';
+  const showAllTab = viewTab === 'all';
 
   return (
     <div className="flex-1 flex flex-col bg-bg max-h-dvh overflow-hidden">
@@ -153,10 +197,10 @@ export function ListScreen() {
           </div>
         </div>
 
-        {/* Main tabs: Пасажири | Посилки */}
+        {/* Main tabs: Усі | Пасажири | Посилки */}
         <div className="flex gap-2 mb-2.5">
           {mainTabs.map((t) => (
-            <button key={t.key} onClick={() => setViewTab(t.key)}
+            <button key={t.key} onClick={() => setViewTab(t.key === 'all' ? 'all' : t.key)}
               className={`flex-1 py-2.5 rounded-xl text-[13px] font-bold text-center cursor-pointer transition-all ${
                 activeMainTab === t.key ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
               }`}>
@@ -165,7 +209,7 @@ export function ListScreen() {
           ))}
         </div>
 
-        {/* Sub-tabs: Отримання | Відправка (only in packages mode) */}
+        {/* Sub-tabs: Отримання | Відправка (in packages mode, both unified and single) */}
         {isPackagesMode && hasShipping && (
           <div className="flex items-center gap-1 mb-2 bg-gray-100 rounded-lg p-0.5">
             <button onClick={() => setViewTab('packages')}
@@ -197,10 +241,10 @@ export function ListScreen() {
 
         {/* Route tabs for unified */}
         {isUnifiedView && !showShipping && routeTabs.length > 0 && (
-          <div className="flex gap-1.5 mt-2.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+          <div className="flex gap-1.5 mt-2.5 justify-center overflow-x-auto pb-0.5 -mx-1 px-1">
             {routeTabs.map((tab) => (
               <button key={tab.name} onClick={() => setRouteFilter(tab.name)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-all ${
+                className={`shrink-0 min-w-[70px] px-4 py-2 rounded-full text-xs font-bold cursor-pointer transition-all ${
                   routeFilter === tab.name ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-500'
                 }`}>
                 {tab.label} <span className="font-black">{tab.count}</span>
@@ -212,7 +256,7 @@ export function ListScreen() {
 
       {/* List */}
       <div className="flex-1 overflow-y-auto px-3 py-3 pb-6 space-y-4">
-        {loading && !loadedTabs.has(viewTab) ? (
+        {loading && !loadedTabs.has(viewTab === 'all' ? 'passengers' : viewTab) ? (
           <div className="flex flex-col items-center justify-center py-16">
             <RefreshCw className="w-7 h-7 text-brand animate-spin mb-3" />
             <p className="text-muted text-sm">Завантаження...</p>
@@ -221,6 +265,35 @@ export function ListScreen() {
           shippingItems.length === 0 ? <Empty /> : shippingItems.map((item, i) => (
             <ShippingCard key={`ship_${item.rowNum}_${i}`} item={item} index={i} />
           ))
+        ) : showAllTab ? (
+          (filteredPassengers.length === 0 && filteredPackages.length === 0) ? <Empty /> : (
+            <>
+              {filteredPassengers.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 px-1">
+                    <Users className="w-4 h-4 text-brand" />
+                    <span className="text-xs font-bold text-text">Пасажири</span>
+                    <span className="text-[10px] font-bold text-muted bg-gray-100 px-2 py-0.5 rounded-full">{filteredPassengers.length}</span>
+                  </div>
+                  {filteredPassengers.map((p, i) => (
+                    <PassengerCard key={p._statusKey} passenger={p} index={i} />
+                  ))}
+                </>
+              )}
+              {filteredPackages.length > 0 && (
+                <>
+                  <div className="flex items-center gap-2 px-1 mt-2">
+                    <Package className="w-4 h-4 text-brand" />
+                    <span className="text-xs font-bold text-text">Посилки</span>
+                    <span className="text-[10px] font-bold text-muted bg-gray-100 px-2 py-0.5 rounded-full">{filteredPackages.length}</span>
+                  </div>
+                  {filteredPackages.map((p, i) => (
+                    <PackageCard key={p._statusKey} pkg={p} index={i} />
+                  ))}
+                </>
+              )}
+            </>
+          )
         ) : viewTab === 'passengers' ? (
           currentItems.length === 0 ? <Empty /> : (currentItems as Passenger[]).map((p, i) => (
             <PassengerCard key={p._statusKey} passenger={p} index={i} />
