@@ -165,18 +165,17 @@ export function ExpensesScreen() {
               {EXPENSE_CATEGORIES.map((cat) => {
                 const Icon = cat.icon;
                 return (
-                  <div key={cat.key} className="flex items-center gap-2.5">
+                  <div key={cat.key} className="flex items-center gap-2">
                     <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cat.color}`}>
                       <Icon className="w-4 h-4" />
                     </span>
-                    <span className="text-xs font-semibold text-text shrink-0">{cat.label}</span>
-                    <div className="flex-1" />
+                    <span className="text-[13px] font-semibold text-text flex-1">{cat.label}</span>
                     <input
                       type="text" inputMode="decimal"
                       value={values[cat.key] || ''}
                       onChange={(e) => setValue(cat.key, e.target.value)}
                       placeholder=""
-                      className="w-28 text-left text-sm font-bold text-text bg-gray-50 rounded-xl px-3 py-2.5 border border-border focus:border-brand focus:outline-none transition-colors"
+                      className="w-32 text-left text-sm font-bold text-text bg-gray-50 rounded-xl px-3 py-2.5 border border-border focus:border-brand focus:outline-none transition-colors"
                     />
                   </div>
                 );
