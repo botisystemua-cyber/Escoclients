@@ -1,5 +1,5 @@
 import { CONFIG } from '../config';
-import type { Route, ShippingRoute, Passenger, Package, ShippingItem, RouteItem, ExpenseRow } from '../types';
+import type { Route, ShippingRoute, Passenger, Package, ShippingItem, RouteItem, ExpenseItem, ExpenseAdvance } from '../types';
 
 // ============================================
 // Читання через Google Sheets gviz API (публічна таблиця)
@@ -252,62 +252,42 @@ export async function updateItemStatus(
 }
 
 // ---- Expenses ----
-const CE = {
-  EXP_ID: 0, RTE_ID: 1, DATE_TRIP: 2, AUTO_ID: 3, AUTO_NUM: 4, DRIVER: 5,
-  ADVANCE_CASH: 6, ADVANCE_CASH_CUR: 7, ADVANCE_CARD: 8, ADVANCE_CARD_CUR: 9,
-  ADVANCE_REMAINING: 10, FUEL: 11, FOOD: 12, PARKING: 13, TOLL: 14, FINE: 15,
-  CUSTOMS: 16, TOP_UP: 17, OTHER: 18, OTHER_DESC: 19, PHOTO: 20,
-  EXPENSE_CUR: 21, TOTAL: 22, TIPS: 23, TIPS_CUR: 24, NOTE: 25,
-};
-
-export async function fetchExpenses(sheetName: string): Promise<ExpenseRow[]> {
-  const rows = await fetchSheet(sheetName);
-  const items: ExpenseRow[] = [];
-  for (let i = 1; i < rows.length; i++) {
-    const row = rows[i];
-    if (!val(row, CE.EXP_ID) && !val(row, CE.DRIVER)) continue;
-    items.push({
-      expId: val(row, CE.EXP_ID),
-      rteId: val(row, CE.RTE_ID),
-      dateTrip: val(row, CE.DATE_TRIP),
-      autoId: val(row, CE.AUTO_ID),
-      autoNum: val(row, CE.AUTO_NUM),
-      driver: val(row, CE.DRIVER),
-      advanceCash: val(row, CE.ADVANCE_CASH),
-      advanceCashCurrency: val(row, CE.ADVANCE_CASH_CUR),
-      advanceCard: val(row, CE.ADVANCE_CARD),
-      advanceCardCurrency: val(row, CE.ADVANCE_CARD_CUR),
-      advanceRemaining: val(row, CE.ADVANCE_REMAINING),
-      fuel: val(row, CE.FUEL),
-      food: val(row, CE.FOOD),
-      parking: val(row, CE.PARKING),
-      toll: val(row, CE.TOLL),
-      fine: val(row, CE.FINE),
-      customs: val(row, CE.CUSTOMS),
-      topUp: val(row, CE.TOP_UP),
-      other: val(row, CE.OTHER),
-      otherDesc: val(row, CE.OTHER_DESC),
-      photoReceipts: val(row, CE.PHOTO),
-      expenseCurrency: val(row, CE.EXPENSE_CUR),
-      totalExpenses: val(row, CE.TOTAL),
-      tips: val(row, CE.TIPS),
-      tipsCurrency: val(row, CE.TIPS_CUR),
-      note: val(row, CE.NOTE),
-    });
-  }
-  return items;
-}
-
-export async function saveExpense(data: Record<string, string>) {
+export async function fetchExpenses(routeName: string): Promise<{ items: ExpenseItem[]; advance: ExpenseAdvance | null }> {
+  const sheetName = routeName.replace('Маршрут_', 'Витрати_');
   const response = await fetch(CONFIG.API_URL, {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'saveExpense', ...data }),
+    body: JSON.stringify({ action: 'getExpenses', payload: { sheetName } }),
+  });
+  const text = await response.text();
+  const data = JSON.parse(text);
+  if (data.success) return { items: data.items || [], advance: data.advance || null };
+  throw new Error(data.error || 'Помилка завантаження витрат');
+}
+
+export async function addExpense(data: Record<string, string>) {
+  const response = await fetch(CONFIG.API_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'addExpense', ...data }),
   });
   const text = await response.text();
   try { return JSON.parse(text); }
-  catch { throw new Error('Помилка збереження витрат'); }
+  catch { throw new Error('Помилка додавання витрати'); }
+}
+
+export async function deleteExpense(data: Record<string, string>) {
+  const response = await fetch(CONFIG.API_URL, {
+    method: 'POST',
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({ action: 'deleteExpense', ...data }),
+  });
+  const text = await response.text();
+  try { return JSON.parse(text); }
+  catch { throw new Error('Помилка видалення витрати'); }
 }
 
 // ---- Add new item (passenger or package) ----

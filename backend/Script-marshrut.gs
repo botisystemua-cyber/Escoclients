@@ -211,8 +211,10 @@ function doPost(e) {
         return respond(handleAddRouteItem(data));
       case 'getExpenses':
         return respond(getExpenses(payload.sheetName || ''));
-      case 'saveExpense':
-        return respond(handleSaveExpense(data));
+      case 'addExpense':
+        return respond(handleAddExpense(data));
+      case 'deleteExpense':
+        return respond(handleDeleteExpense(data));
       default:
         return respond({ success: false, error: 'Невідома дія: ' + action });
     }
@@ -585,22 +587,51 @@ function handleAddRouteItem(data) {
 }
 
 // ============================================
-// getExpenses — витрати водія
+// getExpenses — витрати водія (читає всі рядки)
+// Кожен рядок = одна витрата. Категорія визначається по заповненій колонці.
 // ============================================
+var CATEGORY_COLS = {
+  'fuel': COL_EXP.FUEL, 'food': COL_EXP.FOOD, 'parking': COL_EXP.PARKING,
+  'toll': COL_EXP.TOLL, 'fine': COL_EXP.FINE, 'customs': COL_EXP.CUSTOMS,
+  'topUp': COL_EXP.TOP_UP, 'other': COL_EXP.OTHER, 'tips': COL_EXP.TIPS
+};
+
+function detectCategory_(row) {
+  for (var key in CATEGORY_COLS) {
+    var val = parseFloat(row[CATEGORY_COLS[key]]) || 0;
+    if (val > 0) return { category: key, amount: val };
+  }
+  return { category: 'other', amount: 0 };
+}
+
 function getExpenses(sheetName) {
   try {
     if (!sheetName) return { success: false, error: 'Не вказано аркуш витрат' };
 
     var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
     var sheet = ss.getSheetByName(sheetName);
-    if (!sheet) return { success: true, items: [], count: 0, sheetName: sheetName };
+    if (!sheet) return { success: true, items: [], advance: null, count: 0, sheetName: sheetName };
 
     var lastRow = sheet.getLastRow();
-    if (lastRow < 2) return { success: true, items: [], count: 0, sheetName: sheetName };
+    if (lastRow < 2) return { success: true, items: [], advance: null, count: 0, sheetName: sheetName };
 
     var readCols = Math.min(sheet.getLastColumn(), TOTAL_COLS_EXP);
     var data = sheet.getRange(2, 1, lastRow - 1, readCols).getValues();
     var items = [];
+
+    // Перший рядок може мати аванс (заповнюється менеджером)
+    var firstRow = data[0];
+    var advance = null;
+    var advCash = parseFloat(firstRow[COL_EXP.ADVANCE_CASH]) || 0;
+    var advCard = parseFloat(firstRow[COL_EXP.ADVANCE_CARD]) || 0;
+    if (advCash > 0 || advCard > 0) {
+      advance = {
+        cash: advCash,
+        cashCurrency: str(firstRow[COL_EXP.ADVANCE_CASH_CUR]) || 'UAH',
+        card: advCard,
+        cardCurrency: str(firstRow[COL_EXP.ADVANCE_CARD_CUR]) || 'UAH'
+      };
+    }
 
     for (var i = 0; i < data.length; i++) {
       var row = data[i];
@@ -608,52 +639,45 @@ function getExpenses(sheetName) {
       var driver = str(row[COL_EXP.DRIVER]);
       if (!expId && !driver) continue;
 
+      var detected = detectCategory_(row);
+      if (detected.amount === 0 && !str(row[COL_EXP.OTHER_DESC])) continue; // порожній рядок
+
       items.push({
         rowNum: i + 2,
         expId: expId,
-        rteId: str(row[COL_EXP.RTE_ID]),
         dateTrip: str(row[COL_EXP.DATE_TRIP]),
-        autoId: str(row[COL_EXP.AUTO_ID]),
-        autoNum: str(row[COL_EXP.AUTO_NUM]),
         driver: driver,
-        advanceCash: str(row[COL_EXP.ADVANCE_CASH]),
-        advanceCashCurrency: str(row[COL_EXP.ADVANCE_CASH_CUR]),
-        advanceCard: str(row[COL_EXP.ADVANCE_CARD]),
-        advanceCardCurrency: str(row[COL_EXP.ADVANCE_CARD_CUR]),
-        advanceRemaining: str(row[COL_EXP.ADVANCE_REMAINING]),
-        fuel: str(row[COL_EXP.FUEL]),
-        food: str(row[COL_EXP.FOOD]),
-        parking: str(row[COL_EXP.PARKING]),
-        toll: str(row[COL_EXP.TOLL]),
-        fine: str(row[COL_EXP.FINE]),
-        customs: str(row[COL_EXP.CUSTOMS]),
-        topUp: str(row[COL_EXP.TOP_UP]),
-        other: str(row[COL_EXP.OTHER]),
-        otherDesc: str(row[COL_EXP.OTHER_DESC]),
-        photoReceipts: str(row[COL_EXP.PHOTO]),
-        expenseCurrency: str(row[COL_EXP.EXPENSE_CUR]),
-        totalExpenses: str(row[COL_EXP.TOTAL]),
-        tips: str(row[COL_EXP.TIPS]),
-        tipsCurrency: str(row[COL_EXP.TIPS_CUR]),
-        note: str(row[COL_EXP.NOTE]),
-        sheet: sheetName
+        category: detected.category,
+        amount: detected.amount,
+        currency: str(row[COL_EXP.EXPENSE_CUR]) || 'CHF',
+        description: str(row[COL_EXP.OTHER_DESC]) || str(row[COL_EXP.NOTE]) || ''
       });
     }
 
-    return { success: true, items: items, count: items.length, sheetName: sheetName };
+    return { success: true, items: items, advance: advance, count: items.length, sheetName: sheetName };
   } catch (err) {
     return { success: false, error: err.toString() };
   }
 }
 
 // ============================================
-// saveExpense — водій зберігає витрати
+// addExpense — водій додає одну витрату (новий рядок)
 // ============================================
-function handleSaveExpense(data) {
+function handleAddExpense(data) {
   try {
     var routeName = data.routeName;
     if (!routeName || !/^Маршрут_\d+$/.test(routeName)) {
       return { success: false, error: 'Невалідний маршрут: ' + (routeName || '(пусто)') };
+    }
+
+    var category = data.category;
+    if (!category || !CATEGORY_COLS[category]) {
+      return { success: false, error: 'Невалідна категорія: ' + (category || '(пусто)') };
+    }
+
+    var amount = parseFloat(data.amount);
+    if (!amount || amount <= 0) {
+      return { success: false, error: 'Невалідна сума' };
     }
 
     var expSheetName = routeName.replace('Маршрут_', 'Витрати_');
@@ -664,70 +688,75 @@ function handleSaveExpense(data) {
     var now = new Date();
     var dateStr = Utilities.formatDate(now, 'Europe/Kiev', 'yyyy-MM-dd');
     var timeStr = Utilities.formatDate(now, 'Europe/Kiev', 'HH:mm:ss');
+    var expId = 'EXP-' + dateStr.replace(/-/g, '') + '-' + timeStr.replace(/:/g, '');
 
-    // Шукаємо існуючий рядок водія або створюємо новий
-    var driverName = data.driverName || '';
-    var lastRow = sheet.getLastRow();
-    var targetRow = -1;
+    // Створюємо рядок (26 колонок, заповнюємо тільки потрібні)
+    var row = new Array(TOTAL_COLS_EXP).fill('');
+    row[COL_EXP.EXP_ID] = expId;
+    row[COL_EXP.DATE_TRIP] = dateStr;
+    row[COL_EXP.DRIVER] = data.driverName || '';
+    row[CATEGORY_COLS[category]] = amount;
+    row[COL_EXP.EXPENSE_CUR] = data.currency || 'CHF';
+    row[COL_EXP.OTHER_DESC] = data.description || '';
+    row[COL_EXP.TOTAL] = amount;
 
-    if (lastRow >= 2) {
-      var drivers = sheet.getRange(2, COL_EXP.DRIVER + 1, lastRow - 1, 1).getValues();
-      for (var i = 0; i < drivers.length; i++) {
-        if (str(drivers[i][0]) === driverName) {
-          targetRow = i + 2;
-          break;
-        }
-      }
-    }
-
-    if (targetRow === -1) {
-      // Новий рядок
-      var expId = 'EXP-' + dateStr.replace(/-/g, '') + '-' + timeStr.replace(/:/g, '');
-      targetRow = lastRow + 1;
-      sheet.getRange(targetRow, COL_EXP.EXP_ID + 1).setValue(expId);
-      sheet.getRange(targetRow, COL_EXP.DRIVER + 1).setValue(driverName);
-      sheet.getRange(targetRow, COL_EXP.DATE_TRIP + 1).setValue(data.dateTrip || dateStr);
-    }
-
-    // Записуємо категорії витрат
-    var fields = {
-      fuel: COL_EXP.FUEL, food: COL_EXP.FOOD, parking: COL_EXP.PARKING,
-      toll: COL_EXP.TOLL, fine: COL_EXP.FINE, customs: COL_EXP.CUSTOMS,
-      topUp: COL_EXP.TOP_UP, other: COL_EXP.OTHER, otherDesc: COL_EXP.OTHER_DESC,
-      expenseCurrency: COL_EXP.EXPENSE_CUR, tips: COL_EXP.TIPS,
-      tipsCurrency: COL_EXP.TIPS_CUR, note: COL_EXP.NOTE
-    };
-
-    for (var key in fields) {
-      if (data[key] !== undefined) {
-        sheet.getRange(targetRow, fields[key] + 1).setValue(data[key]);
-      }
-    }
-
-    // Автопідрахунок суми
-    var total = (parseFloat(data.fuel) || 0) + (parseFloat(data.food) || 0) +
-      (parseFloat(data.parking) || 0) + (parseFloat(data.toll) || 0) +
-      (parseFloat(data.fine) || 0) + (parseFloat(data.customs) || 0) +
-      (parseFloat(data.topUp) || 0) + (parseFloat(data.other) || 0) +
-      (parseFloat(data.tips) || 0);
-    sheet.getRange(targetRow, COL_EXP.TOTAL + 1).setValue(total);
-
-    // Залишок авансу
-    var advCash = parseFloat(sheet.getRange(targetRow, COL_EXP.ADVANCE_CASH + 1).getValue()) || 0;
-    var advCard = parseFloat(sheet.getRange(targetRow, COL_EXP.ADVANCE_CARD + 1).getValue()) || 0;
-    var remaining = (advCash + advCard) - total;
-    sheet.getRange(targetRow, COL_EXP.ADVANCE_REMAINING + 1).setValue(remaining);
+    sheet.appendRow(row);
 
     // Логуємо
     var logSheet = ss.getSheetByName(SHEET_LOGS);
     if (logSheet) {
       logSheet.appendRow([
-        dateStr, timeStr, driverName, routeName, '',
-        'витрати', 'saved', 'Сума: ' + total, ''
+        dateStr, timeStr, data.driverName || '', routeName, expId,
+        'витрати', 'added', category + ': ' + amount + ' ' + (data.currency || 'CHF'), ''
       ]);
     }
 
-    return { success: true, message: 'Витрати збережено', total: total, remaining: remaining };
+    return { success: true, message: 'Витрату додано', expId: expId };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+// ============================================
+// deleteExpense — видалити витрату по rowNum
+// ============================================
+function handleDeleteExpense(data) {
+  try {
+    var routeName = data.routeName;
+    if (!routeName || !/^Маршрут_\d+$/.test(routeName)) {
+      return { success: false, error: 'Невалідний маршрут: ' + (routeName || '(пусто)') };
+    }
+
+    var rowNum = parseInt(data.rowNum);
+    if (!rowNum || rowNum < 2) {
+      return { success: false, error: 'Невалідний номер рядка' };
+    }
+
+    var expSheetName = routeName.replace('Маршрут_', 'Витрати_');
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(expSheetName);
+    if (!sheet) return { success: false, error: 'Аркуш не знайдено: ' + expSheetName };
+
+    // Перевіряємо що рядок належить цьому водію
+    var driver = str(sheet.getRange(rowNum, COL_EXP.DRIVER + 1).getValue());
+    if (data.driverName && driver !== data.driverName) {
+      return { success: false, error: 'Це не ваша витрата' };
+    }
+
+    sheet.deleteRow(rowNum);
+
+    var now = new Date();
+    var logSheet = ss.getSheetByName(SHEET_LOGS);
+    if (logSheet) {
+      logSheet.appendRow([
+        Utilities.formatDate(now, 'Europe/Kiev', 'yyyy-MM-dd'),
+        Utilities.formatDate(now, 'Europe/Kiev', 'HH:mm:ss'),
+        data.driverName || '', routeName, '',
+        'витрати', 'deleted', 'row ' + rowNum, ''
+      ]);
+    }
+
+    return { success: true, message: 'Витрату видалено' };
   } catch (err) {
     return { success: false, error: err.toString() };
   }

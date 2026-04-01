@@ -102,31 +102,22 @@ export type StatusFilter = 'all' | ItemStatus;
 
 export type ViewTab = 'all' | 'passengers' | 'packages' | 'shipping';
 
-export interface ExpenseRow {
+export type ExpenseCategory = 'fuel' | 'food' | 'parking' | 'toll' | 'fine' | 'customs' | 'topUp' | 'other' | 'tips';
+
+export interface ExpenseItem {
+  rowNum: number;
   expId: string;
-  rteId: string;
   dateTrip: string;
-  autoId: string;
-  autoNum: string;
   driver: string;
-  advanceCash: string;
-  advanceCashCurrency: string;
-  advanceCard: string;
-  advanceCardCurrency: string;
-  advanceRemaining: string;
-  fuel: string;
-  food: string;
-  parking: string;
-  toll: string;
-  fine: string;
-  customs: string;
-  topUp: string;
-  other: string;
-  otherDesc: string;
-  photoReceipts: string;
-  expenseCurrency: string;
-  totalExpenses: string;
-  tips: string;
-  tipsCurrency: string;
-  note: string;
+  category: ExpenseCategory;
+  amount: number;
+  currency: string;
+  description: string;
+}
+
+export interface ExpenseAdvance {
+  cash: number;
+  cashCurrency: string;
+  card: number;
+  cardCurrency: string;
 }
