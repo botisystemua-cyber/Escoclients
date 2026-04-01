@@ -1321,19 +1321,17 @@
         <!-- ROUTES VIEW -->
         <div class="routes-view" id="routesView" style="display:none;">
             <div id="routeHeaderBar" class="route-header-bar" style="display:none;">
-                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;cursor:pointer;" onclick="toggleRouteDashboard()">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
                     <div style="display:flex;align-items:center;gap:10px;">
                         <h2 id="routeViewTitle" style="margin:0;font-size:18px;font-weight:800;">🚐 Маршрут</h2>
                         <span class="route-subtitle" id="routeSubtitle" style="margin:0;"></span>
                     </div>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <span id="routeDashToggle" style="font-size:11px;opacity:0.6;transition:transform 0.3s;">▼</span>
-                    </div>
                 </div>
-                <div id="routeDashContent" style="display:none;margin-top:10px;">
+                <div id="routeDashContent" style="margin-top:10px;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;">
                         <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();optimizeRouteOrder()">⚡ Оптимізувати порядок</button>
                         <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();loadRoutes(true)">🔄 Оновити</button>
+                        <button class="bs-btn" style="background:rgba(220,38,38,0.3);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(220,38,38,0.4);" onclick="event.stopPropagation();confirmDeleteRoute(activeRouteIdx)">🗑️ Видалити маршрут</button>
                     </div>
                 </div>
             </div>
@@ -1970,7 +1968,7 @@ function initMapsAPI() {
 // ================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbxQH334W4xJ_WViQ5EicfRfhikYRgapZHFle-bEEsZJqc7PHXKcHSh-SYyUbrvl_skS/exec';
 const API_URL_ROUTES = 'https://script.google.com/macros/s/AKfycbyPlpKT2DOQcF_HSWM9UNdLli8v-Dt9m9bjAX_GW904twxYL0gdd-pd1OlewWPtQHDMlQ/exec';
-const ROUTE_ACTIONS = ['updateRouteField','deleteFromSheet','addToRoute','createRoute','deleteRoute','deleteLinkedSheets'];
+const ROUTE_ACTIONS = [];
 const COL_MAP = {
     pax_id:'PAX_ID', smartId:'Ід_смарт', direction:'Напрям', sourceSheet:'SOURCE_SHEET',
     dateCreated:'Дата створення', name:'Піб', phone:'Телефон пасажира',
@@ -2610,10 +2608,7 @@ function renderRouteSidebar() {
                         <span class="item-icon">🗺️</span>
                         <span class="item-text">${name}</span>
                     </span>
-                    <span style="display:flex;align-items:center;gap:4px;">
-                        <span class="item-count" style="font-size:9px;">${countLabel}</span>
-                        <button class="route-delete-btn" onclick="event.stopPropagation(); confirmDeleteRoute(${idx})" title="Видалити маршрут">✕</button>
-                    </span>
+                    <span class="item-count" style="font-size:9px;">${countLabel}</span>
                 </div>`;
             }).join('');
         }
