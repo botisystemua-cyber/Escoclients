@@ -214,35 +214,33 @@ function AddExpenseModal({ onClose, onAdd }: {
     setSubmitting(false);
   };
 
-  const cat = getCat(category);
-
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-lg bg-white rounded-t-3xl shadow-2xl max-h-[85dvh] flex flex-col animate-[slideUp_0.25s_ease-out]"
+      <div className="w-full bg-white rounded-t-3xl shadow-2xl max-h-[85dvh] flex flex-col animate-[slideUp_0.25s_ease-out]"
         onClick={(e) => e.stopPropagation()}>
 
-        <div className="flex items-center justify-between px-5 pt-5 pb-3 border-b border-gray-100">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-gray-100">
           <h2 className="text-base font-bold text-text">Нова витрата</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-gray-100 cursor-pointer">
             <X className="w-5 h-5 text-muted" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
           {/* Category grid */}
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Категорія</div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Категорія</div>
+            <div className="grid grid-cols-3 gap-1.5">
               {CATEGORIES.map((c) => {
                 const Icon = c.icon;
                 const active = category === c.key;
                 return (
                   <button key={c.key} onClick={() => setCategory(c.key)}
-                    className={`flex flex-col items-center gap-1 py-3 rounded-xl cursor-pointer transition-all ${
+                    className={`flex flex-col items-center gap-0.5 py-2.5 rounded-xl cursor-pointer transition-all ${
                       active ? `${c.bg} ${c.color} ring-2 ring-current` : 'bg-gray-50 text-gray-400'
                     }`}>
-                    <Icon className="w-5 h-5" />
-                    <span className="text-[11px] font-bold">{c.label}</span>
+                    <Icon className="w-4 h-4" />
+                    <span className="text-[10px] font-bold">{c.label}</span>
                   </button>
                 );
               })}
@@ -251,29 +249,24 @@ function AddExpenseModal({ onClose, onAdd }: {
 
           {/* Amount */}
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Сума</div>
-            <div className="flex items-center gap-2">
-              <span className={`w-10 h-10 rounded-xl flex items-center justify-center ${cat.bg} ${cat.color}`}>
-                {(() => { const I = cat.icon; return <I className="w-5 h-5" />; })()}
-              </span>
-              <input
-                autoFocus
-                type="text" inputMode="decimal"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-                placeholder="0.00"
-                className="flex-1 text-2xl font-black text-text bg-gray-50 rounded-xl px-4 py-3 border border-border focus:border-brand focus:outline-none"
-              />
-            </div>
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Сума</div>
+            <input
+              autoFocus
+              type="text" inputMode="decimal"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+              placeholder="0.00"
+              className="w-full text-xl font-black text-text bg-gray-50 rounded-xl px-3 py-3 border border-border focus:border-brand focus:outline-none"
+            />
           </div>
 
           {/* Currency */}
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Валюта</div>
-            <div className="flex gap-2">
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Валюта</div>
+            <div className="flex gap-1.5">
               {['UAH', 'EUR', 'CHF', 'PLN', 'USD'].map((c) => (
                 <button key={c} onClick={() => setCurrency(c)}
-                  className={`flex-1 py-2.5 rounded-xl text-xs font-bold cursor-pointer transition-all ${
+                  className={`flex-1 py-2 rounded-xl text-[11px] font-bold cursor-pointer transition-all ${
                     currency === c ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
                   }`}>{c}</button>
               ))}
@@ -282,19 +275,19 @@ function AddExpenseModal({ onClose, onAdd }: {
 
           {/* Description */}
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Опис (необов'язково)</div>
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Опис (необов'язково)</div>
             <input
               type="text" value={description} onChange={(e) => setDescription(e.target.value)}
-              placeholder="Заправка Shell, обід на трасі..."
-              className="w-full text-sm text-text bg-gray-50 rounded-xl px-4 py-3 border border-border focus:border-brand focus:outline-none placeholder:text-gray-300"
+              placeholder="Заправка Shell, обід..."
+              className="w-full text-sm text-text bg-gray-50 rounded-xl px-3 py-2.5 border border-border focus:border-brand focus:outline-none placeholder:text-gray-300"
             />
           </div>
         </div>
 
         {/* Submit */}
-        <div className="px-5 py-4 border-t border-gray-100">
+        <div className="px-3 py-3 border-t border-gray-100 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button onClick={handleSubmit} disabled={submitting || !amount || parseFloat(amount) <= 0}
-            className="w-full py-3.5 rounded-2xl bg-brand text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all disabled:opacity-40">
+            className="w-full py-3 rounded-2xl bg-brand text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all disabled:opacity-40">
             {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
             {submitting ? 'Додаю...' : 'Додати'}
           </button>
