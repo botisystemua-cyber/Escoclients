@@ -15,6 +15,8 @@ export function AddItemModal({ onClose, onAdded }: Props) {
   const [itemType, setItemType] = useState<'пасажир' | 'посилка'>(defaultType);
   const [selectedRoute, setSelectedRoute] = useState(isUnifiedView ? routes[0]?.name || '' : currentSheet);
   const [submitting, setSubmitting] = useState(false);
+  const defaultDirection = viewTab === 'shipping' ? 'відправка' : 'отримання';
+  const [direction, setDirection] = useState<'отримання' | 'відправка'>(defaultDirection);
 
   // Common fields
   const [dateTrip, setDateTrip] = useState('');
@@ -69,6 +71,7 @@ export function AddItemModal({ onClose, onAdded }: Props) {
         data.pkgDesc = pkgDesc;
         data.pkgWeight = pkgWeight;
         data.ttn = ttn;
+        data.direction = direction;
       }
 
       const result = await addRouteItem(data);
@@ -152,6 +155,21 @@ export function AddItemModal({ onClose, onAdded }: Props) {
           {/* Package fields */}
           {itemType === 'посилка' && (
             <>
+              {/* Direction toggle */}
+              <div className="flex gap-2">
+                <button onClick={() => setDirection('отримання')}
+                  className={`flex-1 py-2 rounded-xl text-[12px] font-bold text-center cursor-pointer transition-all ${
+                    direction === 'отримання' ? 'bg-emerald-500 text-white shadow-sm' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                  <Package className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Отримання
+                </button>
+                <button onClick={() => setDirection('відправка')}
+                  className={`flex-1 py-2 rounded-xl text-[12px] font-bold text-center cursor-pointer transition-all ${
+                    direction === 'відправка' ? 'bg-blue-500 text-white shadow-sm' : 'bg-gray-100 text-gray-400'
+                  }`}>
+                  <Send className="w-3.5 h-3.5 inline mr-1 -mt-0.5" />Відправка
+                </button>
+              </div>
               <Field label="Відправник" value={senderName} onChange={setSenderName} placeholder="ПІБ" />
               <Field label="Отримувач *" value={recipientName} onChange={setRecipientName} placeholder="ПІБ" />
               <Field label="Тел. отримувача" value={recipientPhone} onChange={setRecipientPhone} placeholder="+380..." type="tel" />
