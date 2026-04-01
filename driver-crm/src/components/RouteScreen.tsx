@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Package, LogOut, ChevronRight, Layers, RefreshCw, User, Truck } from 'lucide-react';
+import { Package, LogOut, ChevronRight, Layers, RefreshCw, User } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
 import { fetchRoutes } from '../api';
 import { BotiLogo } from './BotiLogo';
@@ -49,8 +49,7 @@ export function RouteScreen() {
                   <div className="font-bold text-brand-dark text-sm">Усі маршрути</div>
                   <div className="flex items-center gap-2 text-xs text-brand/60">
                     <span className="flex items-center gap-0.5"><User className="w-3 h-3" />{routes.reduce((s, r) => s + (r.paxCount || 0), 0)}</span>
-                    <span className="flex items-center gap-0.5"><Package className="w-3 h-3" />{routes.reduce((s, r) => s + (r.pkgCount || 0), 0)}</span>
-                    <span className="flex items-center gap-0.5"><Truck className="w-3 h-3" />{shippingRoutes.reduce((s, r) => s + r.count, 0)}</span>
+                    <span className="flex items-center gap-0.5">📦 {routes.reduce((s, r) => s + (r.pkgCount || 0), 0) + shippingRoutes.reduce((s, r) => s + r.count, 0)}</span>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-brand" />
@@ -64,12 +63,7 @@ export function RouteScreen() {
                   <div className="font-bold text-text text-sm">{r.name}</div>
                   <div className="flex items-center gap-2 text-xs text-muted">
                     <span className="flex items-center gap-0.5"><User className="w-3 h-3" />{r.paxCount || 0}</span>
-                    <span className="flex items-center gap-0.5"><Package className="w-3 h-3" />{r.pkgCount || 0}</span>
-                    {(() => {
-                      const num = r.name.replace('Маршрут_', '');
-                      const ship = shippingRoutes.find(s => s.name === 'Відправка_' + num);
-                      return ship && ship.count > 0 ? <span className="flex items-center gap-0.5"><Truck className="w-3 h-3" />{ship.count}</span> : null;
-                    })()}
+                    <span className="flex items-center gap-0.5">📦 {(r.pkgCount || 0) + (() => { const num = r.name.replace('Маршрут_', ''); const ship = shippingRoutes.find(s => s.name === 'Відправка_' + num); return ship ? ship.count : 0; })()}</span>
                   </div>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted" />
