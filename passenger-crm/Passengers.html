@@ -4509,15 +4509,21 @@ async function savePassenger() {
     const routeSheet = saveBtn ? saveBtn.getAttribute('data-route-sheet') : null;
     if (editingPaxId && routeSheet) {
         showLoader('Збереження маршруту...');
+        // Маппінг: назви колонок МАРШРУТНОЇ таблиці (не пасажирської!)
         const fieldMap = {
-            'Піб пасажира': name, 'Телефон пасажира': phone,
-            'Телефон реєстратора': formData.phoneReg, 'Кількість місць': formData.seats,
-            'Адреса відправки': formData.from, 'Адреса прибуття': formData.to,
-            'Дата рейсу': formData.date, 'Таймінг': formData.timing,
-            'Сума': formData.price, 'Валюта': formData.currency,
-            'Завдаток': formData.deposit, 'Валюта завдатку': formData.currencyDeposit,
-            'Вага багажу': formData.weight, 'Ціна багажу': formData.weightPrice,
-            'Валюта багажу': formData.currencyWeight, 'Примітка': formData.note
+            'Піб пасажира': name,
+            'Телефон пасажира': phone,
+            'Кількість місць': formData.seats,
+            'Адреса відправки': formData.from,
+            'Адреса прибуття': formData.to,
+            'Дата рейсу': formData.date,
+            'Таймінг': formData.timing,
+            'Сума': formData.price,
+            'Валюта': formData.currency,
+            'Завдаток': formData.deposit,
+            'Валюта завдатку': formData.currencyDeposit,
+            'Вага багажу': formData.weight,
+            'Примітка': formData.note
         };
         let hasError = false;
         for (const [col, value] of Object.entries(fieldMap)) {
