@@ -18,7 +18,7 @@ function loadHiddenCols(): Set<string> {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [driverName, setDriverNameState] = useState(() => localStorage.getItem('driverName') || '');
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'routes' | 'list'>('login');
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'routes' | 'list' | 'expenses'>('login');
   const [currentSheet, setCurrentSheet] = useState('');
   const [isUnifiedView, setIsUnifiedView] = useState(false);
   const [statuses, setStatuses] = useState<Record<string, ItemStatus>>({});

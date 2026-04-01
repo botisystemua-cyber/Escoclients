@@ -7,7 +7,7 @@
 // СТРУКТУРА:
 //   Маршрут_1/2/3  — пасажири + посилки (поле "Тип запису")
 //   Відправка_1/2/3 — відправлення (read-only для водія)
-//   Витрати_1/2/3  — витрати (поки не використовується)
+//   Витрати_1/2/3  — витрати водія
 //   *_Шаблон       — шаблони, ігноруються
 //   Зведення рейсів — зведення, ігнорується
 // ============================================
@@ -115,6 +115,39 @@ var COL_SHIP = {
 };
 var TOTAL_COLS_SHIP = 28;
 
+// ============================================
+// КОЛОНКИ — Витрати (26 колонок)
+// ============================================
+var COL_EXP = {
+  EXP_ID: 0,             // A
+  RTE_ID: 1,             // B
+  DATE_TRIP: 2,          // C
+  AUTO_ID: 3,            // D
+  AUTO_NUM: 4,           // E
+  DRIVER: 5,             // F
+  ADVANCE_CASH: 6,       // G — Аванс готівка
+  ADVANCE_CASH_CUR: 7,   // H — Валюта авансу готівка
+  ADVANCE_CARD: 8,       // I — Аванс картка
+  ADVANCE_CARD_CUR: 9,   // J — Валюта авансу картка
+  ADVANCE_REMAINING: 10,  // K — Залишок авансу
+  FUEL: 11,              // L — Бензин
+  FOOD: 12,              // M — Їжа
+  PARKING: 13,           // N — Паркування
+  TOLL: 14,              // O — Толл на дорозі
+  FINE: 15,              // P — Штраф
+  CUSTOMS: 16,           // Q — Митниця
+  TOP_UP: 17,            // R — Поповнення рахунку
+  OTHER: 18,             // S — Інше
+  OTHER_DESC: 19,        // T — Опис інше
+  PHOTO: 20,             // U — Фото чеків
+  EXPENSE_CUR: 21,       // V — Валюта витрат
+  TOTAL: 22,             // W — Всього витрат
+  TIPS: 23,              // X — Чайові
+  TIPS_CUR: 24,          // Y — Валюта чайових
+  NOTE: 25               // Z — Примітка
+};
+var TOTAL_COLS_EXP = 26;
+
 // Ігноровані листи
 var EXCLUDE_PATTERNS = ['шаблон', 'зведення', 'логи', 'template'];
 
@@ -140,6 +173,9 @@ function doGet(e) {
       case 'getShippingItems':
         if (!sheet) return respond({ success: false, error: 'Не вказано sheet' });
         return respond(getShippingItems(sheet));
+      case 'getExpenses':
+        if (!sheet) return respond({ success: false, error: 'Не вказано sheet' });
+        return respond(getExpenses(sheet));
       default:
         return respond({ success: false, error: 'Невідома GET дія: ' + action });
     }
@@ -173,6 +209,10 @@ function doPost(e) {
         return respond(handleDriverStatusUpdate(data));
       case 'addRouteItem':
         return respond(handleAddRouteItem(data));
+      case 'getExpenses':
+        return respond(getExpenses(payload.sheetName || ''));
+      case 'saveExpense':
+        return respond(handleSaveExpense(data));
       default:
         return respond({ success: false, error: 'Невідома дія: ' + action });
     }
@@ -539,6 +579,155 @@ function handleAddRouteItem(data) {
     }
 
     return { success: true, message: 'Додано ' + (itemType === 'пасажир' ? 'пасажира' : 'посилку'), itemId: itemId };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+// ============================================
+// getExpenses — витрати водія
+// ============================================
+function getExpenses(sheetName) {
+  try {
+    if (!sheetName) return { success: false, error: 'Не вказано аркуш витрат' };
+
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(sheetName);
+    if (!sheet) return { success: true, items: [], count: 0, sheetName: sheetName };
+
+    var lastRow = sheet.getLastRow();
+    if (lastRow < 2) return { success: true, items: [], count: 0, sheetName: sheetName };
+
+    var readCols = Math.min(sheet.getLastColumn(), TOTAL_COLS_EXP);
+    var data = sheet.getRange(2, 1, lastRow - 1, readCols).getValues();
+    var items = [];
+
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      var expId = str(row[COL_EXP.EXP_ID]);
+      var driver = str(row[COL_EXP.DRIVER]);
+      if (!expId && !driver) continue;
+
+      items.push({
+        rowNum: i + 2,
+        expId: expId,
+        rteId: str(row[COL_EXP.RTE_ID]),
+        dateTrip: str(row[COL_EXP.DATE_TRIP]),
+        autoId: str(row[COL_EXP.AUTO_ID]),
+        autoNum: str(row[COL_EXP.AUTO_NUM]),
+        driver: driver,
+        advanceCash: str(row[COL_EXP.ADVANCE_CASH]),
+        advanceCashCurrency: str(row[COL_EXP.ADVANCE_CASH_CUR]),
+        advanceCard: str(row[COL_EXP.ADVANCE_CARD]),
+        advanceCardCurrency: str(row[COL_EXP.ADVANCE_CARD_CUR]),
+        advanceRemaining: str(row[COL_EXP.ADVANCE_REMAINING]),
+        fuel: str(row[COL_EXP.FUEL]),
+        food: str(row[COL_EXP.FOOD]),
+        parking: str(row[COL_EXP.PARKING]),
+        toll: str(row[COL_EXP.TOLL]),
+        fine: str(row[COL_EXP.FINE]),
+        customs: str(row[COL_EXP.CUSTOMS]),
+        topUp: str(row[COL_EXP.TOP_UP]),
+        other: str(row[COL_EXP.OTHER]),
+        otherDesc: str(row[COL_EXP.OTHER_DESC]),
+        photoReceipts: str(row[COL_EXP.PHOTO]),
+        expenseCurrency: str(row[COL_EXP.EXPENSE_CUR]),
+        totalExpenses: str(row[COL_EXP.TOTAL]),
+        tips: str(row[COL_EXP.TIPS]),
+        tipsCurrency: str(row[COL_EXP.TIPS_CUR]),
+        note: str(row[COL_EXP.NOTE]),
+        sheet: sheetName
+      });
+    }
+
+    return { success: true, items: items, count: items.length, sheetName: sheetName };
+  } catch (err) {
+    return { success: false, error: err.toString() };
+  }
+}
+
+// ============================================
+// saveExpense — водій зберігає витрати
+// ============================================
+function handleSaveExpense(data) {
+  try {
+    var routeName = data.routeName;
+    if (!routeName || !/^Маршрут_\d+$/.test(routeName)) {
+      return { success: false, error: 'Невалідний маршрут: ' + (routeName || '(пусто)') };
+    }
+
+    var expSheetName = routeName.replace('Маршрут_', 'Витрати_');
+    var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(expSheetName);
+    if (!sheet) return { success: false, error: 'Аркуш не знайдено: ' + expSheetName };
+
+    var now = new Date();
+    var dateStr = Utilities.formatDate(now, 'Europe/Kiev', 'yyyy-MM-dd');
+    var timeStr = Utilities.formatDate(now, 'Europe/Kiev', 'HH:mm:ss');
+
+    // Шукаємо існуючий рядок водія або створюємо новий
+    var driverName = data.driverName || '';
+    var lastRow = sheet.getLastRow();
+    var targetRow = -1;
+
+    if (lastRow >= 2) {
+      var drivers = sheet.getRange(2, COL_EXP.DRIVER + 1, lastRow - 1, 1).getValues();
+      for (var i = 0; i < drivers.length; i++) {
+        if (str(drivers[i][0]) === driverName) {
+          targetRow = i + 2;
+          break;
+        }
+      }
+    }
+
+    if (targetRow === -1) {
+      // Новий рядок
+      var expId = 'EXP-' + dateStr.replace(/-/g, '') + '-' + timeStr.replace(/:/g, '');
+      targetRow = lastRow + 1;
+      sheet.getRange(targetRow, COL_EXP.EXP_ID + 1).setValue(expId);
+      sheet.getRange(targetRow, COL_EXP.DRIVER + 1).setValue(driverName);
+      sheet.getRange(targetRow, COL_EXP.DATE_TRIP + 1).setValue(data.dateTrip || dateStr);
+    }
+
+    // Записуємо категорії витрат
+    var fields = {
+      fuel: COL_EXP.FUEL, food: COL_EXP.FOOD, parking: COL_EXP.PARKING,
+      toll: COL_EXP.TOLL, fine: COL_EXP.FINE, customs: COL_EXP.CUSTOMS,
+      topUp: COL_EXP.TOP_UP, other: COL_EXP.OTHER, otherDesc: COL_EXP.OTHER_DESC,
+      expenseCurrency: COL_EXP.EXPENSE_CUR, tips: COL_EXP.TIPS,
+      tipsCurrency: COL_EXP.TIPS_CUR, note: COL_EXP.NOTE
+    };
+
+    for (var key in fields) {
+      if (data[key] !== undefined) {
+        sheet.getRange(targetRow, fields[key] + 1).setValue(data[key]);
+      }
+    }
+
+    // Автопідрахунок суми
+    var total = (parseFloat(data.fuel) || 0) + (parseFloat(data.food) || 0) +
+      (parseFloat(data.parking) || 0) + (parseFloat(data.toll) || 0) +
+      (parseFloat(data.fine) || 0) + (parseFloat(data.customs) || 0) +
+      (parseFloat(data.topUp) || 0) + (parseFloat(data.other) || 0) +
+      (parseFloat(data.tips) || 0);
+    sheet.getRange(targetRow, COL_EXP.TOTAL + 1).setValue(total);
+
+    // Залишок авансу
+    var advCash = parseFloat(sheet.getRange(targetRow, COL_EXP.ADVANCE_CASH + 1).getValue()) || 0;
+    var advCard = parseFloat(sheet.getRange(targetRow, COL_EXP.ADVANCE_CARD + 1).getValue()) || 0;
+    var remaining = (advCash + advCard) - total;
+    sheet.getRange(targetRow, COL_EXP.ADVANCE_REMAINING + 1).setValue(remaining);
+
+    // Логуємо
+    var logSheet = ss.getSheetByName(SHEET_LOGS);
+    if (logSheet) {
+      logSheet.appendRow([
+        dateStr, timeStr, driverName, routeName, '',
+        'витрати', 'saved', 'Сума: ' + total, ''
+      ]);
+    }
+
+    return { success: true, message: 'Витрати збережено', total: total, remaining: remaining };
   } catch (err) {
     return { success: false, error: err.toString() };
   }

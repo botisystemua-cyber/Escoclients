@@ -5,7 +5,7 @@ import { fetchRoutes } from '../api';
 import { BotiLogo } from './BotiLogo';
 
 export function RouteScreen() {
-  const { driverName, setDriverName, setCurrentScreen, openRoute, routes, setRoutes, setShippingRoutes, showToast } = useApp();
+  const { driverName, setDriverName, setCurrentScreen, openRoute, routes, setRoutes, setShippingRoutes } = useApp();
   const [loading, setLoading] = useState(false);
 
   const loadRoutes = async () => {

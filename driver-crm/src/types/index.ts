@@ -101,3 +101,32 @@ export type RouteType = 'route';  // one type now — route contains both pax + 
 export type StatusFilter = 'all' | ItemStatus;
 
 export type ViewTab = 'all' | 'passengers' | 'packages' | 'shipping';
+
+export interface ExpenseRow {
+  expId: string;
+  rteId: string;
+  dateTrip: string;
+  autoId: string;
+  autoNum: string;
+  driver: string;
+  advanceCash: string;
+  advanceCashCurrency: string;
+  advanceCard: string;
+  advanceCardCurrency: string;
+  advanceRemaining: string;
+  fuel: string;
+  food: string;
+  parking: string;
+  toll: string;
+  fine: string;
+  customs: string;
+  topUp: string;
+  other: string;
+  otherDesc: string;
+  photoReceipts: string;
+  expenseCurrency: string;
+  totalExpenses: string;
+  tips: string;
+  tipsCurrency: string;
+  note: string;
+}

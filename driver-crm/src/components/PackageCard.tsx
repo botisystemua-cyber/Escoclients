@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Phone, MapPin, RotateCw, CheckCircle2, XCircle, Undo2,
-  CreditCard, Info, ChevronUp, Package as PkgIcon, Calendar,
+  CreditCard, Info, ChevronUp, Calendar,
 } from 'lucide-react';
 import type { Package, ItemStatus } from '../types';
 import { useApp } from '../store/useAppStore';

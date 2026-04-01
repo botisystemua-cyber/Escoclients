@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
   ArrowLeft, RefreshCw, Package, Users, Truck, BarChart3,
-  ListFilter, LayoutGrid,
+  ListFilter, LayoutGrid, Search, X,
 } from 'lucide-react';
 import { useApp } from '../store/useAppStore';
 import { fetchPassengers, fetchPackages, fetchShippingItems } from '../api';
@@ -11,12 +11,11 @@ import { ShippingCard } from './ShippingCard';
 import { ColumnEditor } from './ColumnEditor';
 import { BottomNav } from './BottomNav';
 import { AddItemModal } from './AddItemModal';
-import { SearchModal } from './SearchModal';
 import type { Passenger, Package as Pkg, ShippingItem, ItemStatus, StatusFilter, ViewTab } from '../types';
 
 export function ListScreen() {
   const {
-    currentSheet, isUnifiedView, goBack, showToast,
+    currentSheet, isUnifiedView, goBack, showToast, setCurrentScreen,
     statusFilter, setStatusFilter, getStatus, setStatus,
     routeFilter, setRouteFilter, routes, shippingRoutes,
     viewTab, setViewTab,
@@ -29,7 +28,7 @@ export function ListScreen() {
   const [loadedTabs, setLoadedTabs] = useState<Set<ViewTab>>(new Set());
   const [showColumnEditor, setShowColumnEditor] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const routeNum = currentSheet.replace('Маршрут_', '');
   const shippingSheetName = shippingRoutes.find((s) => s.name === 'Відправка_' + routeNum)?.name || '';
@@ -127,9 +126,17 @@ export function ListScreen() {
     return filtered;
   };
 
-  const filteredPassengers = filterItems(passengers);
-  const filteredPackages = filterItems(packages);
-  const filteredShipping = filterItems(shippingItems);
+  const q = searchQuery.toLowerCase().trim();
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const searchIn = <T,>(items: T[], fields: string[]): T[] => {
+    if (!q) return items;
+    return items.filter((item) => fields.some((f) => String((item as any)[f] || '').toLowerCase().includes(q)));
+  };
+
+  const filteredPassengers = searchIn(filterItems(passengers), ['name', 'phone', 'addrFrom', 'addrTo', 'itemId']);
+  const filteredPackages = searchIn(filterItems(packages), ['recipientName', 'recipientPhone', 'senderName', 'recipientAddr', 'ttn', 'itemId']);
+  const filteredShipping = searchIn(filterItems(shippingItems), ['senderName', 'recipientName', 'recipientPhone', 'recipientAddr', 'dispatchId']);
   const currentItems = viewTab === 'passengers' || viewTab === 'all' ? filteredPassengers : viewTab === 'packages' ? filteredPackages : [];
 
   // Stats
@@ -183,6 +190,22 @@ export function ListScreen() {
               <span className="text-sm font-bold text-text">{isUnifiedView ? 'Усі маршрути' : currentSheet}</span>
             </div>
           </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2 mb-2.5">
+          <Search className="w-4 h-4 text-muted shrink-0" />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Пошук: ім'я, телефон, адреса..."
+            className="flex-1 text-xs text-text placeholder:text-gray-300 bg-transparent focus:outline-none"
+          />
+          {searchQuery && (
+            <button onClick={() => setSearchQuery('')} className="p-0.5 rounded-md hover:bg-gray-200 cursor-pointer">
+              <X className="w-3.5 h-3.5 text-muted" />
+            </button>
+          )}
         </div>
 
         {/* Main tabs */}
@@ -299,7 +322,7 @@ export function ListScreen() {
       {/* Bottom Nav */}
       <BottomNav
         onAdd={() => setShowAddModal(true)}
-        onSearch={() => setShowSearch(true)}
+        onExpenses={() => setCurrentScreen('expenses')}
         onColumns={() => setShowColumnEditor(true)}
         onRefresh={refresh}
         loading={loading}
@@ -308,7 +331,6 @@ export function ListScreen() {
       {/* Modals */}
       {showColumnEditor && <ColumnEditor onClose={() => setShowColumnEditor(false)} />}
       {showAddModal && <AddItemModal onClose={() => setShowAddModal(false)} onAdded={refresh} />}
-      {showSearch && <SearchModal passengers={passengers} packages={packages} onClose={() => setShowSearch(false)} />}
     </div>
   );
 }
