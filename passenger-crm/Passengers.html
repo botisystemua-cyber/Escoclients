@@ -1966,7 +1966,7 @@ function initMapsAPI() {
 // ================================================================
 // CONFIG
 // ================================================================
-const API_URL = 'https://script.google.com/macros/s/AKfycbxQH334W4xJ_WViQ5EicfRfhikYRgapZHFle-bEEsZJqc7PHXKcHSh-SYyUbrvl_skS/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbzuQV3R5VfKT-sBnJN1L1aKuVirBb6darlkw4iFsoIoEFGfk5GRCw1sWED9QyCCX1Ig/exec';
 const API_URL_ROUTES = 'https://script.google.com/macros/s/AKfycbyPlpKT2DOQcF_HSWM9UNdLli8v-Dt9m9bjAX_GW904twxYL0gdd-pd1OlewWPtQHDMlQ/exec';
 const ROUTE_ACTIONS = [];
 const COL_MAP = {
@@ -2583,12 +2583,13 @@ function renderRouteSidebar() {
     const pcLoading = document.getElementById('pcRoutesLoading');
     if (pcLoading) pcLoading.style.display = 'none';
 
-    // Рахуємо лічильники один раз і зберігаємо
+    // Оновлюємо лічильники: якщо rows завантажені — рахуємо з них, інакше — залишаємо з API
     routes.forEach(function(sheet) {
         if (sheet.rows !== null) {
             sheet.paxCount = sheet.rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
             sheet.parcelCount = sheet.rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
         }
+        // paxCount/parcelCount вже встановлені з getRoutesList якщо rows ще null
     });
 
     // PC sidebar
@@ -2770,8 +2771,8 @@ function renderRoutes() {
     const rows = sheet.rows || [];
     const name = (sheet.sheetName || 'Маршрут').replace('Маршрут_', '');
 
-    const paxCount = rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length;
-    const parcelCount = rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length;
+    const paxCount = rows.length > 0 ? rows.filter(r => (r['Тип запису'] || '').includes('Пасажир')).length : (sheet.paxCount || 0);
+    const parcelCount = rows.length > 0 ? rows.filter(r => (r['Тип запису'] || '').includes('Посилк')).length : (sheet.parcelCount || 0);
 
     // Show route header bar + filters
     if (headerBar) headerBar.style.display = 'block';
