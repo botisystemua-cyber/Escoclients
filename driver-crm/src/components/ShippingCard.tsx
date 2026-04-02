@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Phone, MapPin, Package, ChevronUp, Info,
+  Phone, MapPin, Package, ChevronUp, Info, Car,
   CreditCard, RotateCw, CheckCircle2, XCircle, Undo2, Pencil,
 } from 'lucide-react';
 import type { ShippingItem, ItemStatus } from '../types';
@@ -101,7 +101,7 @@ export function ShippingCard({ item, index, onEdit }: Props) {
         {/* Actions */}
         <div className="flex gap-2 mb-2">
           <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { if (item.recipientPhone) window.location.href = `tel:${item.recipientPhone}`; else showToast('Немає телефону'); }} />
-          <Btn icon={Phone} label="Відправник" color="bg-blue-50 text-blue-700" onClick={() => { if (item.senderPhone) window.location.href = `tel:${item.senderPhone}`; else showToast('Немає телефону відправника'); }} />
+          <Btn icon={Car} label="Звідки" color="bg-blue-50 text-blue-700" onClick={() => { if (item.senderPhone) window.location.href = `tel:${item.senderPhone}`; else showToast('Немає телефону відправника'); }} />
           <Btn icon={MapPin} label="Куди" color="bg-blue-50 text-blue-700" onClick={() => { if (item.recipientAddr) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(item.recipientAddr)}&travelmode=driving`, '_blank'); else showToast('Немає адреси'); }} />
           <Btn icon={expanded ? ChevronUp : Info} label={expanded ? 'Згорнути' : 'Деталі'} color={expanded ? 'bg-brand/10 text-brand' : 'bg-gray-50 text-gray-600'} onClick={() => setExpanded(!expanded)} />
         </div>

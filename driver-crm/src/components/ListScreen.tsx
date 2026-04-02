@@ -312,7 +312,7 @@ export function ListScreen() {
           )
         ) : showShipping ? (
           filteredShipping.length === 0 ? <Empty /> : filteredShipping.map((item, i) => (
-            <ShippingCard key={item._statusKey || `ship_${item.rowNum}_${i}`} item={item} index={i} />
+            <ShippingCard key={item._statusKey || `ship_${item.rowNum}_${i}`} item={item} index={i} onEdit={setEditItem} />
           ))
         ) : showAllTab ? (
           (filteredPassengers.length === 0 && filteredPackages.length === 0 && filteredShipping.length === 0) ? <Empty /> : (
