@@ -1964,6 +1964,57 @@ function apiUpdateRouteField(params) {
   return { ok: true };
 }
 
+// Оновити КІЛЬКА полів одного запису в маршруті за один запит
+function apiUpdateRouteFields(params) {
+  var sheetName = params.sheet;
+  var rteId = params.rte_id || params.pax_id;
+  var fields = params.fields; // { 'Піб пасажира': 'Іванов', 'Телефон': '...' }
+  if (!sheetName || !rteId || !fields) return { ok: false, error: 'sheet, rte_id, fields обов\'язкові' };
+
+  var ss = SpreadsheetApp.openById(DB.MARHRUT);
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return { ok: false, error: 'Аркуш не знайдено: ' + sheetName };
+
+  var lastRow = sheet.getLastRow();
+  var lastCol = sheet.getLastColumn();
+  if (lastRow < 2 || lastCol < 1) return { ok: false, error: 'Аркуш порожній' };
+
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); });
+
+  var rteIdCol = headers.indexOf('RTE_ID');
+  var paxPkgCol = headers.indexOf('PAX_ID/PKG_ID');
+  if (paxPkgCol === -1) paxPkgCol = headers.indexOf('PAX_ID / PKG_ID');
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
+  var rowNum = -1;
+
+  for (var i = 0; i < data.length; i++) {
+    var rId = rteIdCol !== -1 ? String(data[i][rteIdCol]).trim() : '';
+    var ppId = paxPkgCol !== -1 ? String(data[i][paxPkgCol]).trim() : '';
+    if (rId === rteId || ppId === rteId) {
+      rowNum = i + 2;
+      break;
+    }
+  }
+
+  if (rowNum === -1) return { ok: false, error: 'Запис не знайдено: ' + rteId };
+
+  var updated = 0;
+  for (var col in fields) {
+    var colIdx = headers.indexOf(col);
+    if (colIdx !== -1) {
+      sheet.getRange(rowNum, colIdx + 1).setValue(fields[col]);
+      updated++;
+    }
+  }
+
+  try {
+    var cache = CacheService.getScriptCache();
+    cache.remove('routeSheet_' + sheetName);
+  } catch(e) {}
+
+  return { ok: true, updated: updated };
+}
+
 function apiAddToRoute(params) {
   var sheetName = params.sheetName;
   var leads = params.leads;
@@ -2373,6 +2424,7 @@ function doPost(e) {
       case 'deleteRoute':        result = apiDeleteRoute(body); break;
       case 'deleteLinkedSheets': result = apiDeleteLinkedSheets(body); break;
       case 'updateRouteField':   result = apiUpdateRouteField(body); break;
+      case 'updateRouteFields':  result = apiUpdateRouteFields(body); break;
 
       // ── AUTOPARK ──
       case 'getAutopark':        result = apiGetAutopark(body); break;

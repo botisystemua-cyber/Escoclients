@@ -4559,12 +4559,8 @@ async function savePassenger() {
             'Вага багажу': formData.weight,
             'Примітка': formData.note
         };
-        let hasError = false;
-        for (const [col, value] of Object.entries(fieldMap)) {
-            const res = await apiPost('updateRouteField', { sheet: routeSheet, rte_id: editingPaxId, col, value: value || '' });
-            if (!res.ok) { showToast('❌ Помилка: ' + (res.error || col)); hasError = true; break; }
-        }
-        if (!hasError) {
+        const res = await apiPost('updateRouteFields', { sheet: routeSheet, rte_id: editingPaxId, fields: fieldMap });
+        if (res.ok) {
             // Оновлюємо локальні дані маршруту
             const rSheet = routes[activeRouteIdx];
             if (rSheet) {
@@ -4576,6 +4572,8 @@ async function savePassenger() {
             if (saveBtn) { saveBtn.removeAttribute('data-route-sheet'); }
             renderRoutes();
             showToast('✅ Оновлено');
+        } else {
+            showToast('❌ Помилка: ' + (res.error || 'Невідома'));
         }
         hideLoader();
         saveBtn.disabled = false; saveBtn.textContent = origText; saveBtn.style.opacity = '1';
