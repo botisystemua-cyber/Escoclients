@@ -21,51 +21,104 @@ const CATEGORIES: { key: ExpenseCategory; label: string; icon: typeof Fuel; colo
 ];
 
 function getCat(key: string) {
-  return CATEGORIES.find((c) => c.key === key) || CATEGORIES[7]; // fallback to 'other'
+  return CATEGORIES.find((c) => c.key === key) || CATEGORIES[7];
+}
+
+interface TaggedExpense extends ExpenseItem {
+  _routeName: string;
 }
 
 export function ExpensesScreen() {
-  const { currentSheet, driverName, showToast, setCurrentScreen } = useApp();
+  const { currentSheet, driverName, isUnifiedView, routes, showToast, setCurrentScreen } = useApp();
 
-  const [items, setItems] = useState<ExpenseItem[]>([]);
-  const [advance, setAdvance] = useState<ExpenseAdvance | null>(null);
+  const [items, setItems] = useState<TaggedExpense[]>([]);
+  const [advances, setAdvances] = useState<Record<string, ExpenseAdvance | null>>({});
   const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
+
+  const routeNames = isUnifiedView ? routes.map((r) => r.name) : [currentSheet];
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchExpenses(currentSheet);
-      // show only this driver's expenses
-      setItems(data.items.filter((e) => e.driver === driverName));
-      setAdvance(data.advance);
+      const results = await Promise.allSettled(
+        routeNames.map(async (rn) => {
+          const data = await fetchExpenses(rn);
+          return {
+            routeName: rn,
+            items: data.items.filter((e) => e.driver === driverName).map((e) => ({ ...e, _routeName: rn })),
+            advance: data.advance,
+          };
+        })
+      );
+
+      const allItems: TaggedExpense[] = [];
+      const advMap: Record<string, ExpenseAdvance | null> = {};
+
+      for (const r of results) {
+        if (r.status === 'fulfilled') {
+          allItems.push(...r.value.items);
+          advMap[r.value.routeName] = r.value.advance;
+        }
+      }
+
+      setItems(allItems);
+      setAdvances(advMap);
     } catch (err) {
       showToast('Помилка: ' + (err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [currentSheet, driverName, showToast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentSheet, isUnifiedView, routes.length, driverName, showToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  // Grand totals
   const totalsByCurrency: Record<string, number> = {};
   items.forEach((e) => { totalsByCurrency[e.currency] = (totalsByCurrency[e.currency] || 0) + e.amount; });
   const currencyEntries = Object.entries(totalsByCurrency);
 
-  // Залишок авансу — рахуємо тільки витрати в тій самій валюті
-  const advanceCashSpent = advance ? (totalsByCurrency[advance.cashCurrency] || 0) : 0;
-  const advanceCardSpent = advance ? (totalsByCurrency[advance.cardCurrency] || 0) : 0;
-  const advanceTotal = advance ? advance.cash + advance.card : 0;
-  const totalSpentInAdvanceCurrency = advance
-    ? (advance.cashCurrency === advance.cardCurrency
-        ? advanceCashSpent
-        : advanceCashSpent + advanceCardSpent)
-    : 0;
-  const remaining = advanceTotal - totalSpentInAdvanceCurrency;
+  // Per-route totals
+  const perRouteTotals: Record<string, Record<string, number>> = {};
+  if (isUnifiedView) {
+    for (const rn of routeNames) {
+      perRouteTotals[rn] = {};
+    }
+    items.forEach((e) => {
+      if (!perRouteTotals[e._routeName]) perRouteTotals[e._routeName] = {};
+      perRouteTotals[e._routeName][e.currency] = (perRouteTotals[e._routeName][e.currency] || 0) + e.amount;
+    });
+  }
 
-  const handleDelete = async (item: ExpenseItem) => {
+  // Advance calculation (sum of all routes in unified)
+  const advanceTotal = Object.values(advances).reduce((sum, adv) => {
+    if (!adv) return sum;
+    return sum + adv.cash + adv.card;
+  }, 0);
+
+  const advanceTotalSpent = Object.values(advances).reduce((sum, adv) => {
+    if (!adv) return sum;
+    const cashSpent = totalsByCurrency[adv.cashCurrency] || 0;
+    const cardSpent = totalsByCurrency[adv.cardCurrency] || 0;
+    return sum + (adv.cashCurrency === adv.cardCurrency ? cashSpent : cashSpent + cardSpent);
+  }, 0);
+
+  // For single route, keep original advance logic
+  const singleAdvance = !isUnifiedView ? advances[currentSheet] ?? null : null;
+  const singleAdvanceCashSpent = singleAdvance ? (totalsByCurrency[singleAdvance.cashCurrency] || 0) : 0;
+  const singleAdvanceCardSpent = singleAdvance ? (totalsByCurrency[singleAdvance.cardCurrency] || 0) : 0;
+  const singleAdvanceTotal = singleAdvance ? singleAdvance.cash + singleAdvance.card : 0;
+  const singleTotalSpent = singleAdvance
+    ? (singleAdvance.cashCurrency === singleAdvance.cardCurrency
+        ? singleAdvanceCashSpent
+        : singleAdvanceCashSpent + singleAdvanceCardSpent)
+    : 0;
+  const singleRemaining = singleAdvanceTotal - singleTotalSpent;
+
+  const handleDelete = async (item: TaggedExpense) => {
     try {
-      const res = await deleteExpense({ routeName: currentSheet, rowNum: String(item.rowNum), driverName });
+      const res = await deleteExpense({ routeName: item._routeName, rowNum: String(item.rowNum), driverName });
       if (res.success) {
         showToast('Видалено');
         loadData();
@@ -77,9 +130,9 @@ export function ExpensesScreen() {
     }
   };
 
-  const handleAdd = async (category: ExpenseCategory, amount: string, currency: string, description: string) => {
+  const handleAdd = async (category: ExpenseCategory, amount: string, currency: string, description: string, routeName: string) => {
     try {
-      const res = await addExpense({ routeName: currentSheet, driverName, category, amount, currency, description });
+      const res = await addExpense({ routeName, driverName, category, amount, currency, description });
       if (res.success) {
         showToast('Додано!');
         setShowAdd(false);
@@ -92,6 +145,8 @@ export function ExpensesScreen() {
     }
   };
 
+  const headerLabel = isUnifiedView ? 'Усі маршрути' : currentSheet.replace('Маршрут_', 'М');
+
   return (
     <div className="flex-1 flex flex-col bg-bg max-h-dvh overflow-hidden">
       {/* Header */}
@@ -103,7 +158,7 @@ export function ExpensesScreen() {
             </button>
             <div className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-brand" />
-              <span className="text-sm font-bold text-text">Витрати — {currentSheet.replace('Маршрут_', 'М')}</span>
+              <span className="text-sm font-bold text-text">Витрати — {headerLabel}</span>
             </div>
           </div>
           <button onClick={loadData} className="p-2 rounded-xl hover:bg-bg cursor-pointer active:scale-95 transition-all">
@@ -121,7 +176,7 @@ export function ExpensesScreen() {
           </div>
         ) : (
           <>
-            {/* Summary card */}
+            {/* Grand summary card */}
             <div className="bg-white rounded-2xl border border-border p-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -143,20 +198,75 @@ export function ExpensesScreen() {
                   <div className="text-2xl font-black text-muted">{items.length}</div>
                 </div>
               </div>
-              {advanceTotal > 0 && (
+
+              {/* Per-route breakdown (unified view only) */}
+              {isUnifiedView && routeNames.length > 1 && (
+                <div className="mt-3 pt-3 border-t border-border space-y-2">
+                  {routeNames.map((rn) => {
+                    const totals = perRouteTotals[rn] || {};
+                    const entries = Object.entries(totals);
+                    const count = items.filter((e) => e._routeName === rn).length;
+                    return (
+                      <div key={rn} className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted">{rn.replace('Маршрут_', 'Маршрут ')}</span>
+                        <div className="flex items-center gap-3">
+                          {entries.length === 0 ? (
+                            <span className="text-xs text-gray-300">0</span>
+                          ) : (
+                            entries.map(([cur, sum]) => (
+                              <span key={cur} className="text-xs font-bold text-text">
+                                {sum.toFixed(2)} <span className="text-muted">{cur}</span>
+                              </span>
+                            ))
+                          )}
+                          <span className="text-[10px] text-muted bg-gray-100 px-1.5 py-0.5 rounded-full font-bold">{count}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Advance - single route */}
+              {!isUnifiedView && singleAdvanceTotal > 0 && singleAdvance && (
                 <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
                   <div>
                     <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Аванс</div>
                     <div className="text-sm font-bold text-text">
-                      {advance!.cash > 0 && <span>{advance!.cash} {advance!.cashCurrency}</span>}
-                      {advance!.cash > 0 && advance!.card > 0 && <span className="text-muted"> + </span>}
-                      {advance!.card > 0 && <span>{advance!.card} {advance!.cardCurrency}</span>}
+                      {singleAdvance.cash > 0 && <span>{singleAdvance.cash} {singleAdvance.cashCurrency}</span>}
+                      {singleAdvance.cash > 0 && singleAdvance.card > 0 && <span className="text-muted"> + </span>}
+                      {singleAdvance.card > 0 && <span>{singleAdvance.card} {singleAdvance.cardCurrency}</span>}
                     </div>
                   </div>
                   <div className="text-right">
                     <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Залишок</div>
-                    <div className={`text-lg font-black ${remaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {remaining.toFixed(2)}
+                    <div className={`text-lg font-black ${singleRemaining >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {singleRemaining.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Advance - unified view */}
+              {isUnifiedView && advanceTotal > 0 && (
+                <div className="mt-3 pt-3 border-t border-border flex items-center justify-between">
+                  <div>
+                    <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Аванс (усі)</div>
+                    <div className="text-sm font-bold text-text">
+                      {Object.values(advances).filter(Boolean).map((adv, i) => (
+                        <span key={i}>
+                          {i > 0 && <span className="text-muted"> + </span>}
+                          {adv!.cash > 0 && <span>{adv!.cash} {adv!.cashCurrency}</span>}
+                          {adv!.cash > 0 && adv!.card > 0 && <span className="text-muted"> + </span>}
+                          {adv!.card > 0 && <span>{adv!.card} {adv!.cardCurrency}</span>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[10px] font-bold text-muted uppercase tracking-wider">Залишок</div>
+                    <div className={`text-lg font-black ${advanceTotal - advanceTotalSpent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {(advanceTotal - advanceTotalSpent).toFixed(2)}
                     </div>
                   </div>
                 </div>
@@ -175,12 +285,19 @@ export function ExpensesScreen() {
                 const cat = getCat(item.category);
                 const Icon = cat.icon;
                 return (
-                  <div key={item.expId || item.rowNum} className="bg-white rounded-2xl border border-border p-3.5 flex items-center gap-3">
+                  <div key={`${item._routeName}_${item.expId || item.rowNum}`} className="bg-white rounded-2xl border border-border p-3.5 flex items-center gap-3">
                     <span className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${cat.bg} ${cat.color}`}>
                       <Icon className="w-5 h-5" />
                     </span>
                     <div className="flex-1 min-w-0">
-                      <div className="text-[13px] font-bold text-text">{cat.label}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[13px] font-bold text-text">{cat.label}</span>
+                        {isUnifiedView && (
+                          <span className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                            {item._routeName.replace('Маршрут_', 'М')}
+                          </span>
+                        )}
+                      </div>
                       {item.description && <div className="text-[11px] text-muted truncate">{item.description}</div>}
                       <div className="text-[10px] text-muted mt-0.5">{item.dateTrip}</div>
                     </div>
@@ -212,26 +329,38 @@ export function ExpensesScreen() {
       )}
 
       {/* Add modal */}
-      {showAdd && <AddExpenseModal onClose={() => setShowAdd(false)} onAdd={handleAdd} />}
+      {showAdd && (
+        <AddExpenseModal
+          onClose={() => setShowAdd(false)}
+          onAdd={handleAdd}
+          routeNames={routeNames}
+          isUnifiedView={isUnifiedView}
+          defaultRoute={currentSheet || routeNames[0]}
+        />
+      )}
     </div>
   );
 }
 
 // ---- Add Expense Modal ----
-function AddExpenseModal({ onClose, onAdd }: {
+function AddExpenseModal({ onClose, onAdd, routeNames, isUnifiedView, defaultRoute }: {
   onClose: () => void;
-  onAdd: (category: ExpenseCategory, amount: string, currency: string, description: string) => void;
+  onAdd: (category: ExpenseCategory, amount: string, currency: string, description: string, routeName: string) => void;
+  routeNames: string[];
+  isUnifiedView: boolean;
+  defaultRoute: string;
 }) {
   const [category, setCategory] = useState<ExpenseCategory>('fuel');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('CHF');
   const [description, setDescription] = useState('');
+  const [selectedRoute, setSelectedRoute] = useState(defaultRoute);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!amount || parseFloat(amount) <= 0) return;
     setSubmitting(true);
-    await onAdd(category, amount, currency, description);
+    await onAdd(category, amount, currency, description, selectedRoute);
     setSubmitting(false);
   };
 
@@ -248,6 +377,21 @@ function AddExpenseModal({ onClose, onAdd }: {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3">
+          {/* Route selector (unified view) */}
+          {isUnifiedView && (
+            <div>
+              <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Маршрут</div>
+              <div className="flex gap-1.5">
+                {routeNames.map((rn) => (
+                  <button key={rn} onClick={() => setSelectedRoute(rn)}
+                    className={`flex-1 py-2 rounded-xl text-[11px] font-bold cursor-pointer transition-all ${
+                      selectedRoute === rn ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
+                    }`}>{rn.replace('Маршрут_', 'М')}</button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Category grid */}
           <div>
             <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Категорія</div>
