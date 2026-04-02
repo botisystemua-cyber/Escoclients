@@ -2032,6 +2032,11 @@ function apiAddToRoute(params) {
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(function(h) { return String(h).replace(/[\r\n]+/g, ' ').replace(/\s+/g, ' ').trim(); });
 
   var added = 0;
+  // Знаходимо колонки для автогенерації ITEM_ID
+  var itemIdCol = headers.indexOf('PAX_ID / PKG_ID');
+  if (itemIdCol === -1) itemIdCol = headers.indexOf('PAX_ID/PKG_ID');
+  var typeCol = headers.indexOf('Тип запису');
+
   for (var i = 0; i < leads.length; i++) {
     var lead = leads[i];
     // Маппінг: шукаємо значення за точним ключем або нормалізованим
@@ -2044,6 +2049,17 @@ function apiAddToRoute(params) {
       }
       return '';
     });
+
+    // Автогенерація ITEM_ID якщо порожній
+    if (itemIdCol !== -1 && !String(row[itemIdCol]).trim()) {
+      var now = new Date();
+      var ds = Utilities.formatDate(now, 'Europe/Kiev', 'yyyyMMdd');
+      var ts = Utilities.formatDate(now, 'Europe/Kiev', 'HHmmss');
+      var type = typeCol !== -1 ? String(row[typeCol]).toLowerCase() : '';
+      var prefix = type.indexOf('посилк') >= 0 ? 'PKG' : 'PAX';
+      row[itemIdCol] = prefix + '_' + ds + '_' + ts + '_' + i;
+    }
+
     // Перевірка що рядок не повністю порожній
     var hasData = row.some(function(v) { return String(v).trim() !== ''; });
     if (hasData) {
