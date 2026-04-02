@@ -5,6 +5,7 @@ import { CONFIG } from '../config';
 import type { Passenger, Package as Pkg, ShippingItem, RouteItem } from '../types';
 
 const CURRENCIES = ['UAH', 'EUR', 'CHF', 'PLN', 'USD'];
+const PAY_FORMS = ['', 'Готівка', 'Картка', 'Переказ'];
 
 interface Props {
   item: RouteItem;
@@ -18,6 +19,7 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
 
   const isShipping = 'dispatchId' in item;
   const isPax = !isShipping && item.type.toLowerCase().includes('пасажир');
+  const isPkg = !isShipping && !isPax;
 
   const getRouteName = () => {
     if (isShipping) {
@@ -33,6 +35,10 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
   const [dateTrip, setDateTrip] = useState(item.dateTrip || '');
   const [amount, setAmount] = useState(item.amount || '');
   const [currency, setCurrency] = useState(item.currency || 'UAH');
+  const [payForm, setPayForm] = useState(
+    isShipping ? (item as ShippingItem).payForm || ''
+    : (item as Passenger | Pkg).payForm || ''
+  );
   const [note, setNote] = useState(item.note || '');
 
   // Passenger
@@ -43,12 +49,17 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
   const [addrTo, setAddrTo] = useState(isPax ? pax.addrTo || '' : '');
   const [seatsCount, setSeatsCount] = useState(isPax ? pax.seatsCount || '1' : '1');
   const [baggageWeight, setBaggageWeight] = useState(isPax ? pax.baggageWeight || '' : '');
+  const [timing, setTiming] = useState(isPax ? pax.timing || '' : '');
   const [city, setCity] = useState(!isShipping ? (item as Passenger).city || '' : '');
 
   // Package
   const pkg = item as Pkg;
-  const isPkg = !isShipping && !isPax;
   const [senderName, setSenderName] = useState(isPkg ? pkg.senderName || '' : isShipping ? (item as ShippingItem).senderName || '' : '');
+  const [senderPhone, setSenderPhone] = useState(
+    isPkg ? (pkg.senderPhone || '')
+    : isShipping ? (item as ShippingItem).senderPhone || ''
+    : ''
+  );
   const [recipientName, setRecipientName] = useState(isPkg ? pkg.recipientName || '' : isShipping ? (item as ShippingItem).recipientName || '' : '');
   const [recipientPhone, setRecipientPhone] = useState(isPkg ? pkg.recipientPhone || '' : isShipping ? (item as ShippingItem).recipientPhone || '' : '');
   const [recipientAddr, setRecipientAddr] = useState(isPkg ? pkg.recipientAddr || '' : isShipping ? (item as ShippingItem).recipientAddr || '' : '');
@@ -58,7 +69,6 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
 
   // Shipping-specific
   const ship = item as ShippingItem;
-  const [senderPhone, setSenderPhone] = useState(isShipping ? ship.senderPhone || '' : '');
   const [weight, setWeight] = useState(isShipping ? ship.weight || '' : '');
   const [description, setDescription] = useState(isShipping ? ship.description || '' : '');
 
@@ -68,7 +78,6 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
       const fields: Record<string, string> = {};
 
       if (isShipping) {
-        // Відправка sheet column names (from backend COL_SHIP headers)
         fields['Дата рейсу'] = dateTrip;
         fields['Піб відправника'] = senderName;
         fields['Телефон відправника'] = senderPhone;
@@ -79,12 +88,14 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
         fields['Опис посилки'] = description;
         fields['Сума'] = amount;
         fields['Валюта'] = currency;
+        fields['Форма оплати'] = payForm;
         fields['Примітка'] = note;
       } else {
         fields['Дата рейсу'] = dateTrip;
         fields['Місто'] = city;
         fields['Сума'] = amount;
         fields['Валюта'] = currency;
+        fields['Форма оплати'] = payForm;
         fields['Примітка'] = note;
 
         if (isPax) {
@@ -94,10 +105,11 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
           fields['Адреса прибуття'] = addrTo;
           fields['Кількість місць'] = seatsCount;
           fields['Вага багажу'] = baggageWeight;
+          fields['Таймінг'] = timing;
         } else {
           fields['Піб відправника'] = senderName;
-          fields['Піб отримувача'] = recipientName;
           fields['Телефон отримувача'] = recipientPhone;
+          fields['Піб отримувача'] = recipientName;
           fields['Адреса отримувача'] = recipientAddr;
           fields['Опис посилки'] = pkgDesc;
           fields['Кг посилки'] = pkgWeight;
@@ -160,16 +172,20 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
                 <Field label="Звідки" value={addrFrom} onChange={setAddrFrom} />
                 <Field label="Куди" value={addrTo} onChange={setAddrTo} />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Field label="Місць" value={seatsCount} onChange={setSeatsCount} type="number" />
                 <Field label="Вага багажу" value={baggageWeight} onChange={setBaggageWeight} />
+                <Field label="Таймінг" value={timing} onChange={setTiming} placeholder="08:00" />
               </div>
             </>
           )}
 
           {isPkg && (
             <>
-              <Field label="Відправник" value={senderName} onChange={setSenderName} />
+              <div className="grid grid-cols-2 gap-2">
+                <Field label="Відправник" value={senderName} onChange={setSenderName} />
+                <Field label="Тел. відправника" value={senderPhone} onChange={setSenderPhone} type="tel" />
+              </div>
               <Field label="Отримувач" value={recipientName} onChange={setRecipientName} />
               <Field label="Тел. отримувача" value={recipientPhone} onChange={setRecipientPhone} type="tel" />
               <Field label="Адреса отримувача" value={recipientAddr} onChange={setRecipientAddr} />
@@ -199,20 +215,29 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
 
           <div className="grid grid-cols-2 gap-2">
             <Field label="Дата рейсу" value={dateTrip} onChange={setDateTrip} type="date" />
-            {!isShipping && <Field label="Місто" value={city} onChange={setCity} />}
+            {!isShipping ? <Field label="Місто" value={city} onChange={setCity} /> : <div />}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Field label="Сума" value={amount} onChange={setAmount} type="number" />
             <div>
-              <label className="block text-[11px] font-semibold text-muted uppercase mb-1">Валюта</label>
-              <div className="flex gap-1">
-                {CURRENCIES.map((c) => (
-                  <button key={c} onClick={() => setCurrency(c)}
-                    className={`flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
-                      currency === c ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'
-                    }`}>{c}</button>
+              <label className="block text-[11px] font-semibold text-muted uppercase mb-1">Форма оплати</label>
+              <select value={payForm} onChange={(e) => setPayForm(e.target.value)}
+                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-text focus:outline-none focus:border-brand">
+                {PAY_FORMS.map((pf) => (
+                  <option key={pf} value={pf}>{pf || '—'}</option>
                 ))}
-              </div>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="block text-[11px] font-semibold text-muted uppercase mb-1">Валюта</label>
+            <div className="flex gap-1">
+              {CURRENCIES.map((c) => (
+                <button key={c} onClick={() => setCurrency(c)}
+                  className={`flex-1 py-2 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
+                    currency === c ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'
+                  }`}>{c}</button>
+              ))}
             </div>
           </div>
           <Field label="Примітка" value={note} onChange={setNote} />
@@ -230,14 +255,15 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
   );
 }
 
-function Field({ label, value, onChange, type }: {
-  label: string; value: string; onChange: (v: string) => void; type?: string;
+function Field({ label, value, onChange, type, placeholder }: {
+  label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string;
 }) {
   return (
     <div>
       <label className="block text-[11px] font-semibold text-muted uppercase mb-1">{label}</label>
       <input type={type || 'text'} value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-text focus:outline-none focus:border-brand" />
+        placeholder={placeholder}
+        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-text placeholder:text-gray-300 focus:outline-none focus:border-brand" />
     </div>
   );
 }
