@@ -1330,10 +1330,11 @@
                 </div>
                 <div id="routeDashContent" style="margin-top:10px;">
                     <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
-                        <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();toggleRouteExpensesView()">💰 Витрати</button>
-                        <button class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();optimizeRouteOrder()">⚡ Оптимізувати порядок</button>
+                        <button id="btnRouteBack" class="bs-btn" style="display:none;background:rgba(255,255,255,0.3);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.4);font-weight:800;" onclick="event.stopPropagation();toggleRouteExpensesView()">← Назад</button>
+                        <button id="btnRouteExpenses" class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();toggleRouteExpensesView()">💰 Витрати</button>
+                        <button id="btnRouteOptimize" class="bs-btn" style="background:rgba(255,255,255,0.2);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(255,255,255,0.3);" onclick="event.stopPropagation();optimizeRouteOrder()">⚡ Оптимізувати</button>
                         <div style="flex:1;"></div>
-                        <button class="bs-btn" style="background:rgba(220,38,38,0.3);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(220,38,38,0.4);" onclick="event.stopPropagation();confirmDeleteRoute(activeRouteIdx)">🗑️ Видалити маршрут</button>
+                        <button class="bs-btn" style="background:rgba(220,38,38,0.3);color:white;font-size:11px;padding:8px 14px;border:1px solid rgba(220,38,38,0.4);" onclick="event.stopPropagation();confirmDeleteRoute(activeRouteIdx)">🗑️ Видалити</button>
                     </div>
                 </div>
             </div>
@@ -2823,6 +2824,7 @@ function renderRoutes() {
     if (title) title.textContent = '🚐 ' + name;
     if (subtitle) subtitle.textContent = '👤 ' + paxCount + ' пасажирів · 📦 ' + parcelCount + ' посилок · ' + rows.length + ' записів';
     _showingExpenses = false;
+    updateRouteDashButtons();
 
     const filtered = getFilteredRouteRows(rows);
     let html = '';
@@ -2844,13 +2846,26 @@ var _showingExpenses = false;
 var CATEGORY_LABELS = { fuel:'⛽ Бензин', food:'🍔 Їжа', parking:'🅿️ Паркування', toll:'🛣️ Толл', fine:'⚠️ Штраф', customs:'🏛️ Митниця', topUp:'📱 Поповнення', other:'📝 Інше', tips:'💵 Чайові' };
 var CATEGORY_COLORS = { fuel:'#f59e0b', food:'#f97316', parking:'#3b82f6', toll:'#8b5cf6', fine:'#ef4444', customs:'#10b981', topUp:'#06b6d4', other:'#6b7280', tips:'#ec4899' };
 
+function updateRouteDashButtons() {
+    var btnExp = document.getElementById('btnRouteExpenses');
+    var btnBack = document.getElementById('btnRouteBack');
+    if (btnExp) {
+        btnExp.style.background = _showingExpenses ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.2)';
+        btnExp.style.fontWeight = _showingExpenses ? '800' : '600';
+        btnExp.style.display = _showingExpenses ? 'none' : '';
+    }
+    if (btnBack) btnBack.style.display = _showingExpenses ? '' : 'none';
+}
+
 function toggleRouteExpensesView() {
     if (_showingExpenses) {
         _showingExpenses = false;
+        updateRouteDashButtons();
         renderRoutes();
         return;
     }
     _showingExpenses = true;
+    updateRouteDashButtons();
     var sheet = routes[activeRouteIdx];
     if (!sheet) return;
     loadAndRenderExpenses(sheet.sheetName);
@@ -2950,7 +2965,7 @@ async function loadAndRenderExpenses(sheetName) {
                 if (e.description) html += '<div style="font-size:12px;color:var(--text-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + e.description + '</div>';
                 html += '<div style="font-size:11px;color:var(--text-secondary);margin-top:2px;">' + (e.dateTrip || '') + ' · ' + (e.driver || '') + '</div>';
                 html += '</div>';
-                html += '<div style="text-align:right;flex-shrink:0;">';
+                html += '<div style="text-align:right;flex-shrink:0;margin-right:8px;">';
                 html += '<div style="font-size:18px;font-weight:800;color:var(--text-primary);">' + e.amount + '</div>';
                 html += '<div style="font-size:11px;font-weight:600;color:var(--text-secondary);">' + (e.currency || 'CHF') + '</div>';
                 html += '</div>';
