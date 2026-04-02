@@ -87,13 +87,10 @@ export function PassengerCard({ passenger: p, index, searchQuery = '', onEdit }:
         </div>
 
         <div className="flex gap-2 mb-2">
-          {p.phone && <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { window.location.href = `tel:${p.phone}`; }} />}
+          <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { if (p.phone) window.location.href = `tel:${p.phone}`; else showToast('Немає телефону'); }} />
           <Btn icon={Car} label="Звідки" color="bg-blue-50 text-blue-700" onClick={() => nav(p.addrFrom)} />
           <Btn icon={MapPin} label="Куди" color="bg-blue-50 text-blue-700" onClick={() => nav(p.addrTo)} />
-        </div>
-        <div className="flex gap-2 mb-2">
           <Btn icon={expanded ? ChevronUp : Info} label={expanded ? 'Згорнути' : 'Деталі'} color={expanded ? 'bg-brand/10 text-brand' : 'bg-gray-50 text-gray-600'} onClick={() => setExpanded(!expanded)} />
-          {onEdit && <Btn icon={Pencil} label="Редагувати" color="bg-amber-50 text-amber-700" onClick={() => onEdit(p)} />}
         </div>
 
         <div className="flex gap-1.5">
@@ -106,6 +103,13 @@ export function PassengerCard({ passenger: p, index, searchQuery = '', onEdit }:
 
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/50 px-3 py-2.5">
+          {onEdit && (
+            <div className="flex justify-end mb-2">
+              <button onClick={() => onEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-[11px] font-bold cursor-pointer active:scale-95 transition-all">
+                <Pencil className="w-3 h-3" />Редагувати
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
             <Cell label="ПІБ" value={p.name} full />
             <Cell label="Телефон" value={p.phone} />

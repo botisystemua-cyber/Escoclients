@@ -79,14 +79,14 @@ export function PackageCard({ pkg: p, index, searchQuery = '', onEdit }: Props) 
           {show('dateTrip') && p.dateTrip && <Chip icon={Calendar} c="gray">{p.dateTrip}</Chip>}
         </div>
 
-        <div className="flex gap-1.5 ml-9 mb-1.5">
-          {p.recipientPhone && <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { window.location.href = `tel:${p.recipientPhone}`; }} />}
-          <Btn icon={MapPin} label="Карта" color="bg-blue-50 text-blue-700" onClick={navigate} />
+        <div className="flex gap-2 mb-2">
+          <Btn icon={Phone} label="Дзвонити" color="bg-green-50 text-green-700" onClick={() => { if (p.recipientPhone) window.location.href = `tel:${p.recipientPhone}`; else showToast('Немає телефону'); }} />
+          <Btn icon={MapPin} label="Звідки" color="bg-blue-50 text-blue-700" onClick={() => { showToast('Немає адреси відправки'); }} />
+          <Btn icon={MapPin} label="Куди" color="bg-blue-50 text-blue-700" onClick={navigate} />
           <Btn icon={expanded ? ChevronUp : Info} label={expanded ? 'Згорнути' : 'Деталі'} color={expanded ? 'bg-brand/10 text-brand' : 'bg-gray-50 text-gray-600'} onClick={() => setExpanded(!expanded)} />
-          {onEdit && <Btn icon={Pencil} label="Редагувати" color="bg-amber-50 text-amber-700" onClick={() => onEdit(p)} />}
         </div>
 
-        <div className="flex gap-1 ml-9">
+        <div className="flex gap-1.5">
           <SB icon={RotateCw} c="border-blue-200 text-blue-600 hover:bg-blue-50" onClick={() => doStatus('in-progress')} />
           <SB icon={CheckCircle2} c="border-emerald-200 text-emerald-600 hover:bg-emerald-50" onClick={() => doStatus('completed')} />
           <SB icon={XCircle} c="border-red-200 text-red-500 hover:bg-red-50" onClick={() => setShowCancel(true)} />
@@ -96,6 +96,13 @@ export function PackageCard({ pkg: p, index, searchQuery = '', onEdit }: Props) 
 
       {expanded && (
         <div className="border-t border-gray-100 bg-gray-50/50 px-3 py-2.5">
+          {onEdit && (
+            <div className="flex justify-end mb-2">
+              <button onClick={() => onEdit(p)} className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-700 text-[11px] font-bold cursor-pointer active:scale-95 transition-all">
+                <Pencil className="w-3 h-3" />Редагувати
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-x-3 gap-y-1">
             <Cell label="Адреса отримувача" value={p.recipientAddr} full />
             <Cell label="Отримувач" value={p.recipientName} />
