@@ -141,7 +141,33 @@ export async function getProfile(cliId: string) {
   };
 }
 
-export async function fetchFlights() {
+export interface ChatMsg {
+  message_id: string;
+  datetime: string;
+  role: string;
+  sender_name: string;
+  text: string;
+  read: string;
+  booking_id: string;
+  order_id: string;
+}
+
+export async function getMessages(cliId: string) {
+  const json = await postApi('getMessages', { cli_id: cliId });
+  if (!json.ok) throw new Error(json.error || 'Помилка завантаження чату');
+  return json.data as ChatMsg[];
+}
+
+export async function sendMessage(cliId: string, text: string) {
+  const json = await postApi('sendMessage', { cli_id: cliId, text });
+  if (!json.ok) throw new Error(json.error || 'Помилка відправки');
+  return json.data as { message_id: string };
+}
+
+export async function markRead(cliId: string) {
+  const json = await postApi('markRead', { cli_id: cliId });
+  return json;
+}
   const res = await fetch(`${API_URL}?action=getTrips`);
   const json = await res.json();
 

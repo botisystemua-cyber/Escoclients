@@ -171,7 +171,7 @@ function App() {
       case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} cliId={cliId || ''} onNavigate={navigate} /> : null;
       case 'parcels': return <ParcelsScreen cliId={cliId || ''} onNavigate={navigate} />;
       case 'orders': return <OrdersScreen cliId={cliId || ''} />;
-      case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;
+      case 'chat': return <ChatScreen cliId={cliId || ''} onClearBadge={clearChatBadge} />;
       case 'tariffs': return <TariffsScreen onNavigate={navigate} />;
       case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} cliId={cliId} />;
       default: return null;
