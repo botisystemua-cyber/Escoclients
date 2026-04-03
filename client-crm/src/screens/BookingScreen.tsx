@@ -140,91 +140,98 @@ export default function BookingScreen({ flight, cliId, onNavigate }: Props) {
 
           {seatMode === 'pick' && (
             <div className="flex flex-col items-center">
-              {/* Sprinter layout */}
-              <div className="relative w-[280px] h-[380px]">
-                {/* Van body */}
-                <svg viewBox="0 0 280 380" className="absolute inset-0 w-full h-full">
-                  {/* Body */}
-                  <rect x="20" y="10" width="240" height="360" rx="40" ry="40" fill="#1e293b" stroke="#334155" strokeWidth="2" />
-                  {/* Windshield */}
-                  <path d="M60 30 L220 30 Q240 30 240 50 L240 100 Q240 110 230 110 L50 110 Q40 110 40 100 L40 50 Q40 30 60 30Z" fill="#93c5fd" opacity="0.3" stroke="#60a5fa" strokeWidth="1" />
-                  {/* Rear window */}
-                  <path d="M80 330 L200 330 Q210 330 210 340 L210 350 Q210 360 200 360 L80 360 Q70 360 70 350 L70 340 Q70 330 80 330Z" fill="#93c5fd" opacity="0.2" stroke="#60a5fa" strokeWidth="1" />
+              {/* Sprinter layout — horizontal, front on right */}
+              <div className="relative w-full max-w-[340px] h-[220px]">
+                <svg viewBox="0 0 340 220" className="absolute inset-0 w-full h-full">
+                  {/* Van body */}
+                  <rect x="8" y="10" width="324" height="200" rx="30" ry="30" fill="#1e293b" stroke="#334155" strokeWidth="2" />
+                  {/* Windshield (front-right) */}
+                  <path d="M280 30 Q320 30 322 60 L322 160 Q320 190 280 190 L270 190 L270 30Z" fill="#93c5fd" opacity="0.25" stroke="#60a5fa" strokeWidth="1" />
+                  {/* Rear window (left) */}
+                  <path d="M50 55 Q38 55 38 70 L38 150 Q38 165 50 165 L58 165 L58 55Z" fill="#93c5fd" opacity="0.15" stroke="#60a5fa" strokeWidth="1" />
                   {/* Side mirrors */}
-                  <ellipse cx="15" cy="70" rx="12" ry="8" fill="#334155" stroke="#475569" strokeWidth="1" />
-                  <ellipse cx="265" cy="70" rx="12" ry="8" fill="#334155" stroke="#475569" strokeWidth="1" />
-                  {/* Door line left */}
-                  <line x1="20" y1="160" x2="20" y2="280" stroke="#475569" strokeWidth="1" strokeDasharray="4 2" />
-                  {/* Door line right */}
-                  <line x1="260" y1="160" x2="260" y2="280" stroke="#475569" strokeWidth="1" strokeDasharray="4 2" />
-                  {/* Divider cabin/passenger */}
-                  <line x1="50" y1="120" x2="230" y2="120" stroke="#475569" strokeWidth="1" />
+                  <ellipse cx="300" cy="8" rx="8" ry="10" fill="#334155" stroke="#475569" strokeWidth="1" />
+                  <ellipse cx="300" cy="212" rx="8" ry="10" fill="#334155" stroke="#475569" strokeWidth="1" />
                   {/* Headlights */}
-                  <circle cx="65" cy="20" r="8" fill="#fbbf24" opacity="0.6" />
-                  <circle cx="215" cy="20" r="8" fill="#fbbf24" opacity="0.6" />
+                  <circle cx="332" cy="50" r="6" fill="#fbbf24" opacity="0.6" />
+                  <circle cx="332" cy="170" r="6" fill="#fbbf24" opacity="0.6" />
                   {/* Tail lights */}
-                  <rect x="45" y="362" width="20" height="6" rx="3" fill="#ef4444" opacity="0.7" />
-                  <rect x="215" y="362" width="20" height="6" rx="3" fill="#ef4444" opacity="0.7" />
+                  <rect x="8" y="50" width="5" height="16" rx="2.5" fill="#ef4444" opacity="0.7" />
+                  <rect x="8" y="154" width="5" height="16" rx="2.5" fill="#ef4444" opacity="0.7" />
+                  {/* Cabin divider */}
+                  <line x1="232" y1="25" x2="232" y2="195" stroke="#475569" strokeWidth="1" />
+                  {/* Door lines */}
+                  <line x1="70" y1="10" x2="160" y2="10" stroke="#475569" strokeWidth="1" strokeDasharray="4 2" />
+                  <line x1="70" y1="210" x2="160" y2="210" stroke="#475569" strokeWidth="1" strokeDasharray="4 2" />
+                  {/* Row labels */}
+                  <text x="24" y="116" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="bold">ЗАД</text>
+                  <text x="310" y="116" textAnchor="middle" fill="#475569" fontSize="9" fontWeight="bold">ПЕРЕД</text>
                 </svg>
 
-                {/* Driver seat */}
-                <div className="absolute top-[50px] left-[55px] w-[50px] h-[50px] bg-gray-700 rounded-lg flex items-center justify-center border border-gray-600">
-                  <span className="text-[10px] text-gray-400 font-bold">V1</span>
+                {/* Driver V1 — front right, top row */}
+                <div className="absolute right-[22px] top-[24px] w-[52px] h-[42px] bg-gray-700 rounded-lg flex items-center justify-center border border-gray-600">
+                  <span className="text-[10px] text-gray-400 font-bold">В1</span>
                 </div>
 
-                {/* Passenger seats - Row A (right column) */}
-                {['A1', 'A2', 'A3'].map((seat, i) => {
+                {/* Front passenger — front right, bottom row */}
+                <div className="absolute right-[22px] bottom-[30px] w-[52px] h-[42px] bg-gray-600 rounded-lg flex items-center justify-center border border-gray-500">
+                  <span className="text-[9px] text-gray-400">ПАС</span>
+                </div>
+
+                {/* Seat grid: 3 columns (rows from front→back) × 2 rows (top=B, bottom=A) */}
+                {/* Top row: B1, B2, B3 (left side of van) */}
+                {['B1', 'B2', 'B3'].map((seat, i) => {
                   const isOccupied = occupiedList.includes(seat);
                   const isSelected = selectedSeats.includes(seat);
-                  const top = 140 + i * 70;
+                  const leftPos = 42 + i * 62;
                   return (
                     <button key={seat} type="button" onClick={() => toggleSeat(seat)}
                       disabled={isOccupied}
-                      className={`absolute left-[55px] w-[70px] h-[55px] rounded-xl font-bold text-sm transition-all border-2 flex flex-col items-center justify-center gap-0.5
+                      className={`absolute top-[24px] w-[54px] h-[42px] rounded-xl font-bold text-xs transition-all border-2 flex flex-col items-center justify-center
                         ${isOccupied
                           ? 'bg-red-100 border-red-300 text-red-400 cursor-not-allowed'
                           : isSelected
                             ? 'bg-accent border-accent text-white shadow-lg shadow-accent/30 scale-105'
                             : 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:border-accent hover:bg-accent/10'
                         }`}
-                      style={{ top: `${top}px` }}
+                      style={{ left: `${leftPos}px` }}
                     >
-                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
                         <path d="M7 18v-1.2c0-1 .8-1.8 1.8-1.8h6.4c1 0 1.8.8 1.8 1.8V18h1v-1.2c0-1.5-1.3-2.8-2.8-2.8H8.8C7.3 14 6 15.3 6 16.8V18h1zm5-14c-1.7 0-3 1.3-3 3s1.3 3 3 3 3-1.3 3-3-1.3-3-3-3z"/>
                       </svg>
-                      <span className="text-[11px]">{seat}</span>
+                      <span className="text-[10px]">{seat}</span>
                     </button>
                   );
                 })}
 
-                {/* Passenger seats - Row B (left column) */}
-                {['B1', 'B2', 'B3'].map((seat, i) => {
+                {/* Bottom row: A1, A2, A3 (right side of van) */}
+                {['A1', 'A2', 'A3'].map((seat, i) => {
                   const isOccupied = occupiedList.includes(seat);
                   const isSelected = selectedSeats.includes(seat);
-                  const top = 140 + i * 70;
+                  const leftPos = 42 + i * 62;
                   return (
                     <button key={seat} type="button" onClick={() => toggleSeat(seat)}
                       disabled={isOccupied}
-                      className={`absolute left-[155px] w-[70px] h-[55px] rounded-xl font-bold text-sm transition-all border-2 flex flex-col items-center justify-center gap-0.5
+                      className={`absolute bottom-[30px] w-[54px] h-[42px] rounded-xl font-bold text-xs transition-all border-2 flex flex-col items-center justify-center
                         ${isOccupied
                           ? 'bg-red-100 border-red-300 text-red-400 cursor-not-allowed'
                           : isSelected
                             ? 'bg-accent border-accent text-white shadow-lg shadow-accent/30 scale-105'
                             : 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:border-accent hover:bg-accent/10'
                         }`}
-                      style={{ top: `${top}px` }}
+                      style={{ left: `${leftPos}px` }}
                     >
-                      <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
+                      <svg viewBox="0 0 24 24" className="w-4 h-4" fill="currentColor">
                         <path d="M7 18v-1.2c0-1 .8-1.8 1.8-1.8h6.4c1 0 1.8.8 1.8 1.8V18h1v-1.2c0-1.5-1.3-2.8-2.8-2.8H8.8C7.3 14 6 15.3 6 16.8V18h1zm5-14c-1.7 0-3 1.3-3 3s1.3 3 3 3 3-1.3 3-3-1.3-3-3-3z"/>
                       </svg>
-                      <span className="text-[11px]">{seat}</span>
+                      <span className="text-[10px]">{seat}</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* Legend */}
-              <div className="flex items-center gap-4 mt-4 text-xs">
+              <div className="flex items-center gap-4 mt-3 text-xs">
                 <div className="flex items-center gap-1.5">
                   <div className="w-4 h-4 rounded bg-emerald-50 border-2 border-emerald-300" />
                   <span className="text-gray-500">Вільне</span>
