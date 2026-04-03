@@ -27,6 +27,7 @@ function doGet(e) {
       return respond(handleGetAppContent());
 
     case 'getAvailableTrips':
+    case 'getTrips':
       return respond(handleGetAvailableTrips());
 
     default:
@@ -883,25 +884,25 @@ function handleGetAvailableTrips() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var freeSeats = parseInt(row[10]) || 0; // Вільні місця
+    var freeSeats = parseInt(row[9]) || 0;  // Вільні місця (J)
     if (freeSeats <= 0) continue;
 
     trips.push({
-      cal_id: row[0],
-      rte_id: row[1],
-      auto_id: row[2],
-      auto_name: row[3],
-      layout: row[4],
-      date: row[5],
-      direction: row[6],
-      city: row[7],
-      max_seats: parseInt(row[8]) || 0,
-      free_seats: freeSeats,
-      occupied: parseInt(row[9]) || 0,
-      free_list: row[11] || '',
-      occupied_list: row[12] || '',
-      paired_id: row[13] || '',
-      status: row[14] || ''
+      cal_id: row[0],       // A
+      rte_id: row[1],       // B
+      auto_id: row[2],      // C
+      auto_name: row[3],    // D
+      layout: row[4],       // E
+      date: row[5],         // F
+      direction: row[6],    // G
+      city: row[7],         // H
+      max_seats: parseInt(row[8]) || 0,   // I
+      free_seats: freeSeats,              // J
+      occupied: parseInt(row[10]) || 0,   // K
+      free_list: row[11] || '',           // L
+      occupied_list: row[12] || '',       // M
+      paired_id: row[13] || '',           // N
+      status: row[14] || ''              // O
     });
   }
 
