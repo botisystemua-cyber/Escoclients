@@ -114,15 +114,13 @@ function handleLogin(params) {
     return { success: false, error: 'Логін та пароль обов\'язкові' };
   }
 
-  var passwordHash = hashPassword(passwordInput);
-
   // ── Власник ──
   if (role === 'owner') {
     var ownData = getSheetData('Власник');
     for (var i = 0; i < ownData.data.length; i++) {
       var row = ownData.data[i];
       var rowLogin = String(row[OWN.LOGIN]).trim();
-      var rowHash = String(row[OWN.PASSWORD_HASH]).trim();
+      var rowPwd = String(row[OWN.PASSWORD_HASH]).trim();
       var rowStatus = String(row[OWN.STATUS]).trim();
 
       if (rowLogin === loginInput) {
@@ -130,7 +128,7 @@ function handleLogin(params) {
           logAccess(row[OWN.USER_ID], row[OWN.NAME], 'Власник', 'Вхід в систему', 'Заблоковано', 'Акаунт неактивний');
           return { success: false, error: 'Акаунт деактивовано' };
         }
-        if (rowHash === passwordHash) {
+        if (rowPwd === passwordInput) {
           logAccess(row[OWN.USER_ID], row[OWN.NAME], 'Власник', 'Вхід в систему', 'Успішно', '');
           updateLastActive('Власник', OWN.LAST_ACTIVE, loginInput, OWN.LOGIN);
           return {
@@ -159,7 +157,7 @@ function handleLogin(params) {
     for (var j = 0; j < stfData.data.length; j++) {
       var srow = stfData.data[j];
       var sLogin = String(srow[STF.LOGIN]).trim();
-      var sHash = String(srow[STF.PASSWORD_HASH]).trim();
+      var sPwd = String(srow[STF.PASSWORD_HASH]).trim();
       var sRole = String(srow[STF.ROLE]).trim();
       var sStatus = String(srow[STF.STATUS]).trim();
 
@@ -175,7 +173,7 @@ function handleLogin(params) {
           return { success: false, error: 'Акаунт деактивовано' };
         }
 
-        if (sHash === passwordHash) {
+        if (sPwd === passwordInput) {
           logAccess(srow[STF.STAFF_ID], srow[STF.NAME], sRole, 'Вхід в систему', 'Успішно', '');
           updateLastActive('Персонал', STF.LAST_ACTIVE, loginInput, STF.LOGIN);
           return {
