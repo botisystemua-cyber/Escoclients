@@ -11,7 +11,7 @@ var MARHRUT_ID = '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y';
 var FINANCE_ID = '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0';
 var ARCHIVE_ID = '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0';
 var CONFIG_ID = '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE';
-var API_URL = 'https://script.google.com/macros/s/AKfycbz62uOAS6G_gBVlGMqigvGFS0cbHU_-dQc0LjoT4esCRnr6YFfdEzIZKxtEvX9zPoKQMA/exec';
+var API_URL = 'https://script.google.com/macros/s/AKfycbw0g9raH8n97YLvfzKEqbV84V_KXHAHNNF-gQxWpjnNfxGASff5EM22lWC-6ysTYQqvuA/exec';
 
 // =============================================
 // doGet — GET-запити
