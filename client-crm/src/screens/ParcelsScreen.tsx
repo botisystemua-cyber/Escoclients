@@ -1,8 +1,21 @@
 import { useState } from 'react';
-import { Package, MapPin, Phone, FileText, Weight, Hash, Banknote, Loader2, User } from 'lucide-react';
+import { Package, MapPin, Phone, FileText, Weight, Hash, Banknote, Loader2, User, ChevronDown } from 'lucide-react';
 import { createOrder } from '../lib/api';
 import Modal from '../components/Modal';
 import type { Screen } from '../types';
+
+const PARCEL_POINTS_CH = [
+  { label: 'Цюрих — Dorflistrasse 90', value: 'Цюрих, Dorflistrasse 90, 8050 Zürich' },
+  { label: 'Цуг — Bahnhofplatz', value: 'Цуг, Bahnhofplatz, 6300 Zug' },
+  { label: 'Люцерн — Alpenquai', value: 'Люцерн, Alpenquai, 6005 Luzern' },
+  { label: 'Берн — Beundenfeld', value: 'Берн, Parkplatz 7c, 3014 Bern' },
+  { label: 'Базель — SBB Station', value: 'Базель, Meret Oppenheim Strasse, 4053 Basel' },
+  { label: 'Сен-Гален — Bahnhofplatz 8b', value: 'Сен-Гален, Bahnhofplatz 8b, 9000 St. Gallen' },
+  { label: 'Лозана — Avenue du Grey 43', value: 'Лозана, Avenue du Grey 43, 1004 Lausanne' },
+  { label: 'Монтре — Rte des Châtaigniers 7', value: 'Монтре, Rte des Châtaigniers 7, 1816 Montreux' },
+  { label: 'Женева — P+R Route de Vessy 12', value: 'Женева, Route de Vessy 12, 1206 Genève' },
+  { label: 'Адресна доставка (інша адреса)', value: '' },
+];
 
 interface Props {
   cliId: string;
@@ -64,6 +77,8 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
   const [errors, setErrors] = useState<Record<string, boolean>>({});
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [otherText, setOtherText] = useState('');
+  const [showPointsUa, setShowPointsUa] = useState(false);
+  const [customAddrUa, setCustomAddrUa] = useState(false);
 
   const toggleCategory = (id: string) => {
     setSelectedCategories(prev =>
@@ -226,11 +241,33 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
                 onChange={e => updateUa('phone_recipient', e.target.value)} className={`${inputCls('phone_recipient')} pl-10`} />
             </div>
 
+            {/* Address dropdown — точки видачі */}
             <div className="relative">
-              <MapPin size={16} className="absolute left-4 top-3.5 text-gray-400" />
-              <input placeholder="Адреса в Європі *" value={formUa.addr_europe}
-                onChange={e => updateUa('addr_europe', e.target.value)} className={`${inputCls('addr_europe')} pl-10`} />
+              <button type="button" onClick={() => setShowPointsUa(!showPointsUa)}
+                className={`w-full px-4 py-3 pl-10 bg-gray-50 border ${errors.addr_europe ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
+                <MapPin size={16} className="absolute left-4 top-3.5 text-gray-400" />
+                <span className={formUa.addr_europe ? 'text-gray-900 truncate pr-2' : 'text-gray-400'}>{formUa.addr_europe || 'Точка видачі / адреса *'}</span>
+                <ChevronDown size={14} className="text-gray-400 shrink-0" />
+              </button>
+              {showPointsUa && (
+                <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
+                  {PARCEL_POINTS_CH.map(p => (
+                    <button key={p.label} type="button" onClick={() => {
+                      if (p.value) { updateUa('addr_europe', p.value); setCustomAddrUa(false); }
+                      else { updateUa('addr_europe', ''); setCustomAddrUa(true); }
+                      setShowPointsUa(false);
+                    }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
+                  ))}
+                </div>
+              )}
             </div>
+            {customAddrUa && (
+              <div className="relative">
+                <MapPin size={16} className="absolute left-4 top-3.5 text-gray-400" />
+                <input placeholder="Вкажіть адресу в Європі *" value={formUa.addr_europe}
+                  onChange={e => updateUa('addr_europe', e.target.value)} className={`${inputCls('addr_europe')} pl-10`} />
+              </div>
+            )}
 
             <div className="relative">
               <Hash size={16} className="absolute left-4 top-3.5 text-gray-400" />

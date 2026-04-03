@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, ChevronDown } from 'lucide-react';
 import { createBooking } from '../lib/api';
 import Modal from '../components/Modal';
 import type { Flight, Screen } from '../types';
@@ -12,14 +12,39 @@ interface Props {
 
 const ALL_SEATS = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3'];
 
+const POINTS_CH = [
+  { label: 'Цюрих — Parking Theater 11', value: 'Цюрих, Dorflistrasse 90, 8050 Zürich' },
+  { label: 'Цуг — Bahnhofplatz', value: 'Цуг, Bahnhofplatz, 6300 Zug' },
+  { label: 'Люцерн — Alpenquai', value: 'Люцерн, Tourist Bus Parking Landenberg, 6005 Luzern' },
+  { label: 'Берн — Beundenfeld', value: 'Берн, Parkplatz 7c, Beundenfeld, 3014 Bern' },
+  { label: 'Базель — SBB Station', value: 'Базель, Meret Oppenheim Strasse, 4053 Basel' },
+  { label: 'Сен-Гален — Bahnhofplatz', value: 'Сен-Гален, Bahnhofplatz 8b, 9000 St. Gallen' },
+  { label: 'Лозана — Avenue du Grey 43', value: 'Лозана, Avenue du Grey 43, 1004 Lausanne' },
+  { label: 'Монтре — Route des Châtaigniers', value: 'Монтре, Route des Châtaigniers 7, 1816 Montreux' },
+  { label: 'Женева — P+R Bout-du-Monde', value: 'Женева, Route de Vessy 12, 1206 Genève' },
+  { label: 'Адресна доставка (інша адреса)', value: '' },
+];
+
+const POINTS_UA = [
+  { label: 'Львів — ЖД вокзал', value: 'Львів, ЖД вокзал' },
+  { label: 'Рудне — Нова Пошта #1', value: 'Рудне, Нова Пошта #1' },
+  { label: 'Адресна доставка (інша адреса)', value: '' },
+];
+
 export default function BookingScreen({ flight, cliId, onNavigate }: Props) {
   const [form, setForm] = useState({ name: '', phone: '', from: '', to: '', seats: 1, note: '' });
+  const [showFromList, setShowFromList] = useState(false);
+  const [showToList, setShowToList] = useState(false);
+  const [customFrom, setCustomFrom] = useState(false);
+  const [customTo, setCustomTo] = useState(false);
   const [seatMode, setSeatMode] = useState<'free' | 'pick'>('free');
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+
+  const isUaToEu = flight.direction === 'UA → EU';
 
   // Parse occupied seats from flight data
   const occupiedSeats = (flight.free_list ? [] : []).concat(
@@ -105,8 +130,51 @@ export default function BookingScreen({ flight, cliId, onNavigate }: Props) {
         <div className="bg-white rounded-2xl p-4 shadow-sm space-y-3">
           <input placeholder="ПІБ пасажира *" value={form.name} onChange={e => update('name', e.target.value)} className={inputCls('name')} />
           <input placeholder="Телефон *" type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls('phone')} />
-          <input placeholder="Адреса відправки *" value={form.from} onChange={e => update('from', e.target.value)} className={inputCls('from')} />
-          <input placeholder="Адреса прибуття *" value={form.to} onChange={e => update('to', e.target.value)} className={inputCls('to')} />
+          {/* From — pickup point */}
+          <div className="relative">
+            <button type="button" onClick={() => { setShowFromList(!showFromList); setShowToList(false); }}
+              className={`w-full px-4 py-3 bg-gray-50 border ${errors.from ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
+              <span className={form.from ? 'text-gray-900' : 'text-gray-400'}>{form.from || 'Посадка / відправка *'}</span>
+              <ChevronDown size={14} className="text-gray-400" />
+            </button>
+            {showFromList && (
+              <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
+                {(isUaToEu ? POINTS_UA : POINTS_CH).map(p => (
+                  <button key={p.label} type="button" onClick={() => {
+                    if (p.value) { update('from', p.value); setCustomFrom(false); }
+                    else { update('from', ''); setCustomFrom(true); }
+                    setShowFromList(false);
+                  }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          {customFrom && (
+            <input placeholder="Вкажіть адресу посадки *" value={form.from} onChange={e => update('from', e.target.value)} className={inputCls('from')} />
+          )}
+
+          {/* To — dropoff point */}
+          <div className="relative">
+            <button type="button" onClick={() => { setShowToList(!showToList); setShowFromList(false); }}
+              className={`w-full px-4 py-3 bg-gray-50 border ${errors.to ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
+              <span className={form.to ? 'text-gray-900' : 'text-gray-400'}>{form.to || 'Висадка / прибуття *'}</span>
+              <ChevronDown size={14} className="text-gray-400" />
+            </button>
+            {showToList && (
+              <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
+                {(isUaToEu ? POINTS_CH : POINTS_UA).map(p => (
+                  <button key={p.label} type="button" onClick={() => {
+                    if (p.value) { update('to', p.value); setCustomTo(false); }
+                    else { update('to', ''); setCustomTo(true); }
+                    setShowToList(false);
+                  }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          {customTo && (
+            <input placeholder="Вкажіть адресу прибуття *" value={form.to} onChange={e => update('to', e.target.value)} className={inputCls('to')} />
+          )}
 
           <div>
             <p className="text-xs text-gray-500 mb-2">Кількість місць</p>
