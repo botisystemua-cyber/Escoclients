@@ -168,8 +168,8 @@ function App() {
         />
       );
       case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} onNavigate={navigate} /> : null;
-      case 'parcels': return <ParcelsScreen />;
-      case 'orders': return <OrdersScreen />;
+      case 'parcels': return <ParcelsScreen cliId={cliId || ''} onNavigate={navigate} />;
+      case 'orders': return <OrdersScreen cliId={cliId || ''} />;
       case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;
       case 'tariffs': return <TariffsScreen onNavigate={navigate} />;
       case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} />;
