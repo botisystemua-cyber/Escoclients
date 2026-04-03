@@ -6,6 +6,7 @@
 
 var KLIYENTU_ID = '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38';
 var PASSENGERS_ID = '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo';
+var CONFIG_ID = '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE';
 var API_URL = 'https://script.google.com/macros/s/AKfycbxUexY0xi7T4MeqFEPjktsFeukwsySbX6t78U7LjM7WcuQ6rVdcws5vElm4lMyT9C4Eng/exec';
 
 // =============================================
@@ -167,6 +168,9 @@ function handleRegister(body) {
 
   sheet.appendRow(row);
 
+  // --- Записати в Config_crm_v2 ---
+  writeClientToConfig(cliId, pib, phone, body.email || '', hash, dateNow);
+
   return {
     ok: true,
     data: {
@@ -197,9 +201,16 @@ function handleLogin(body) {
   }
 
   // Оновити останню активність
+  var dateNow = now();
   var ss = SpreadsheetApp.openById(KLIYENTU_ID);
   var sheet = ss.getSheetByName('Клієнти');
-  sheet.getRange(client.rowNum, 4).setValue(now()); // Остання активність (D)
+  sheet.getRange(client.rowNum, 4).setValue(dateNow); // Остання активність (D)
+
+  // Оновити останню активність в Config → Клієнти_доступ
+  updateConfigClientActivity(client.row[0], dateNow, body.device || '');
+
+  // Лог входу в Config → Лог доступів
+  logAccess(client.row[0], client.row[6], 'Клієнт', 'Вхід в апку', 'KLIYENTU', '', body.device || '', dateNow);
 
   return {
     ok: true,
@@ -236,8 +247,17 @@ function handleChangePassword(body) {
     return { ok: false, error: 'Невірний старий пароль' };
   }
 
-  sheet.getRange(found.rowNum, 39).setValue(hashPassword(newPassword)); // AM
-  sheet.getRange(found.rowNum, 4).setValue(now()); // Остання активність
+  var newHash = hashPassword(newPassword);
+  var dateNow = now();
+
+  sheet.getRange(found.rowNum, 39).setValue(newHash); // AM
+  sheet.getRange(found.rowNum, 4).setValue(dateNow); // Остання активність
+
+  // Синхронізувати хеш в Config → Клієнти_доступ
+  updateConfigClientHash(cliId, newHash);
+
+  // Лог зміни пароля
+  logAccess(cliId, found.row[6], 'Клієнт', 'Зміна пароля', 'KLIYENTU', 'Клієнти', '', dateNow);
 
   return { ok: true, msg: 'Пароль змінено' };
 }
@@ -745,6 +765,121 @@ function handleGetAvailableTrips() {
   }
 
   return { ok: true, data: trips };
+}
+
+// =============================================
+// CONFIG_CRM_V2 — запис доступів
+// =============================================
+
+/**
+ * При реєстрації: записати в Клієнти_доступ + Паролі + Лог доступів
+ */
+function writeClientToConfig(cliId, pib, phone, email, hash, dateNow) {
+  var cfgSs = SpreadsheetApp.openById(CONFIG_ID);
+
+  // 1. Клієнти_доступ (14 колонок)
+  var accessSheet = cfgSs.getSheetByName('Клієнти_доступ');
+  var accessId = genId('ACC');
+  accessSheet.appendRow([
+    accessId,        // ACCESS_ID (A)
+    cliId,           // CLI_ID (B)
+    pib,             // Піб (C)
+    phone,           // Телефон (D)
+    email,           // EMAIL (E)
+    phone,           // Логін (F) — телефон як логін
+    hash,            // PASSWORD_HASH (G)
+    'Активний',      // Статус апки (H)
+    dateNow,         // Дата реєстрації (I)
+    dateNow,         // Остання активність (J)
+    '',              // Пристрій (K)
+    '',              // Заблоковано (L)
+    '',              // Причина блокування (M)
+    ''               // Примітка (N)
+  ]);
+
+  // 2. Паролі (15 колонок)
+  var pwdSheet = cfgSs.getSheetByName('Паролі');
+  var pwdId = genId('PWD');
+  pwdSheet.appendRow([
+    pwdId,           // PWD_ID (A)
+    cliId,           // USER_ID (B)
+    pib,             // Піб (C)
+    'Клієнт',        // Роль (D)
+    phone,           // Телефон (E)
+    phone,           // Логін (F)
+    '',              // Тимчасовий пароль (G)
+    'Встановлено',   // Статус пароля (H)
+    '',              // Відправлено СМС (I)
+    '',              // Дата відправки (J)
+    'Так',           // Змінено клієнтом (K) — сам встановив при реєстрації
+    dateNow,         // Дата зміни (L)
+    'Система',       // Хто створив (M)
+    dateNow,         // Дата створення (N)
+    'Реєстрація через апку' // Примітка (O)
+  ]);
+
+  // 3. Лог доступів
+  logAccess(cliId, pib, 'Клієнт', 'Реєстрація', 'KLIYENTU', 'Клієнти', '', dateNow);
+}
+
+/**
+ * Оновити останню активність в Config → Клієнти_доступ
+ */
+function updateConfigClientActivity(cliId, dateNow, device) {
+  var cfgSs = SpreadsheetApp.openById(CONFIG_ID);
+  var sheet = cfgSs.getSheetByName('Клієнти_доступ');
+  var data = getSheetData(sheet);
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][1] === cliId) { // CLI_ID (B)
+      var rowNum = i + 2;
+      sheet.getRange(rowNum, 10).setValue(dateNow);  // Остання активність (J)
+      if (device) {
+        sheet.getRange(rowNum, 11).setValue(device);  // Пристрій (K)
+      }
+      return;
+    }
+  }
+}
+
+/**
+ * Оновити хеш пароля в Config → Клієнти_доступ
+ */
+function updateConfigClientHash(cliId, newHash) {
+  var cfgSs = SpreadsheetApp.openById(CONFIG_ID);
+  var sheet = cfgSs.getSheetByName('Клієнти_доступ');
+  var data = getSheetData(sheet);
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][1] === cliId) { // CLI_ID (B)
+      sheet.getRange(i + 2, 7).setValue(newHash); // PASSWORD_HASH (G)
+      return;
+    }
+  }
+}
+
+/**
+ * Записати в Config → Лог доступів
+ */
+function logAccess(userId, pib, role, action, table, sheetName, device, dateNow) {
+  var cfgSs = SpreadsheetApp.openById(CONFIG_ID);
+  var logSheet = cfgSs.getSheetByName('Лог доступів');
+  var logId = genId('LOG');
+
+  logSheet.appendRow([
+    logId,           // LOG_ID (A)
+    userId,          // USER_ID (B)
+    pib,             // Піб (C)
+    role,            // Роль (D)
+    action,          // Дія (E)
+    table,           // Таблиця (F)
+    sheetName,       // Аркуш (G)
+    '',              // IP адреса (H) — недоступно в GAS
+    device,          // Пристрій (I)
+    dateNow,         // Дата і час (J)
+    'Успішно',       // Статус (K)
+    ''               // Примітка (L)
+  ]);
 }
 
 // =============================================
