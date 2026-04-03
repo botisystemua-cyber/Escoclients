@@ -1,16 +1,16 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, Wifi, RefreshCw, ExternalLink, DollarSign, Menu, X } from 'lucide-react';
+import { Users, Wifi, RefreshCw, ExternalLink, DollarSign } from 'lucide-react';
 import { Logo, apiCall, type StaffMember, type RouteAccess, type OnlineUser } from './shared';
 import { StaffTab } from './StaffTab';
 import { OnlineTab } from './OnlineTab';
 
 type Tab = 'staff' | 'online' | 'finances' | 'crm';
 
-const MENU_ITEMS: { key: Tab; label: string; icon: typeof Users; external?: string }[] = [
-  { key: 'staff', label: 'Співробітники', icon: Users },
-  { key: 'online', label: 'Онлайн', icon: Wifi },
-  { key: 'finances', label: 'Фінанси', icon: DollarSign },
-  { key: 'crm', label: 'CRM', icon: ExternalLink, external: '/passenger-crm/Passengers.html' },
+const MENU_ITEMS: { key: Tab; label: string; shortLabel: string; icon: typeof Users; external?: string }[] = [
+  { key: 'staff', label: 'Співробітники', shortLabel: 'Команда', icon: Users },
+  { key: 'online', label: 'Онлайн', shortLabel: 'Онлайн', icon: Wifi },
+  { key: 'finances', label: 'Фінанси', shortLabel: 'Фінанси', icon: DollarSign },
+  { key: 'crm', label: 'CRM', shortLabel: 'CRM', icon: ExternalLink, external: '/passenger-crm/Passengers.html' },
 ];
 
 export function AdminPanel() {
@@ -19,7 +19,6 @@ export function AdminPanel() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [access, setAccess] = useState<RouteAccess[]>([]);
   const [onlineUsers, setOnlineUsers] = useState<OnlineUser[]>([]);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -56,89 +55,54 @@ export function AdminPanel() {
       return;
     }
     setTab(item.key);
-    setMobileMenuOpen(false);
   };
 
   return (
-    <div className="min-h-[100dvh] flex">
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row">
       {/* ═══ Sidebar — desktop ═══ */}
-      <aside className="hidden lg:flex w-[240px] shrink-0 flex-col bg-white border-r border-border sticky top-0 h-[100dvh]">
-        <div className="px-5 py-5 border-b border-border">
-          <Logo size="sm" />
+      <aside className="hidden lg:flex w-[280px] shrink-0 flex-col bg-white border-r border-border sticky top-0 h-[100dvh]">
+        <div className="px-6 py-6 border-b border-border">
+          <Logo size="md" />
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-1">
+        <nav className="flex-1 px-4 py-5 space-y-1.5">
           {MENU_ITEMS.map(item => {
             const Icon = item.icon;
             const active = !item.external && tab === item.key;
             return (
               <button key={item.key} onClick={() => handleTabClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all ${active ? 'bg-brand text-white shadow-sm' : 'text-text-secondary hover:bg-bg'}`}>
+                className={`w-full flex items-center gap-3.5 px-5 py-3.5 rounded-xl text-base font-bold cursor-pointer transition-all ${active ? 'bg-brand text-white shadow-sm' : 'text-text-secondary hover:bg-bg'}`}>
                 <Icon className="w-5 h-5" />
                 {item.label}
                 {item.key === 'online' && onlineCount > 0 && (
-                  <span className={`ml-auto w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${active ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'}`}>
+                  <span className={`ml-auto min-w-[22px] h-[22px] rounded-full text-xs font-bold flex items-center justify-center px-1 ${active ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'}`}>
                     {onlineCount}
                   </span>
                 )}
-                {item.external && <ExternalLink className="w-3.5 h-3.5 ml-auto opacity-40" />}
+                {item.external && <ExternalLink className="w-4 h-4 ml-auto opacity-40" />}
               </button>
             );
           })}
         </nav>
-        <div className="px-5 py-4 border-t border-border">
+        <div className="px-4 py-4 border-t border-border">
           <button onClick={loadAll}
-            className="w-full flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold text-muted hover:bg-bg cursor-pointer transition-all">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Оновити
+            className="w-full flex items-center gap-3 px-5 py-3 rounded-xl text-sm font-bold text-muted hover:bg-bg cursor-pointer transition-all">
+            <RefreshCw className={`w-4.5 h-4.5 ${loading ? 'animate-spin' : ''}`} />
+            Оновити все
           </button>
         </div>
-        <div className="px-5 pb-4 text-[10px] text-muted/50 font-medium">
+        <div className="px-6 pb-5 text-xs text-muted/50 font-medium">
           <span className="text-text/40 font-bold">Boti</span><span className="text-success/40 font-bold">Logistics</span> Owner v1.0
         </div>
       </aside>
 
-      {/* ═══ Mobile header ═══ */}
+      {/* ═══ Main area ═══ */}
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="lg:hidden sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-border px-4 py-3 flex items-center justify-between">
-          <Logo size="sm" />
-          <div className="flex items-center gap-2">
-            <button onClick={loadAll} className="p-2 rounded-xl hover:bg-bg cursor-pointer">
-              <RefreshCw className={`w-5 h-5 text-muted ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-xl hover:bg-bg cursor-pointer">
-              {mobileMenuOpen ? <X className="w-5 h-5 text-text" /> : <Menu className="w-5 h-5 text-text" />}
-            </button>
-          </div>
-        </header>
-
-        {/* Mobile menu dropdown */}
-        {mobileMenuOpen && (
-          <div className="lg:hidden bg-white border-b border-border px-4 py-3 space-y-1 animate-[fadeIn_0.15s_ease-out]">
-            {MENU_ITEMS.map(item => {
-              const Icon = item.icon;
-              const active = !item.external && tab === item.key;
-              return (
-                <button key={item.key} onClick={() => handleTabClick(item)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold cursor-pointer transition-all ${active ? 'bg-brand text-white' : 'text-text-secondary hover:bg-bg'}`}>
-                  <Icon className="w-5 h-5" />
-                  {item.label}
-                  {item.key === 'online' && onlineCount > 0 && (
-                    <span className={`ml-auto w-5 h-5 rounded-full text-[10px] font-bold flex items-center justify-center ${active ? 'bg-white/20 text-white' : 'bg-green-100 text-green-600'}`}>
-                      {onlineCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {/* Content */}
-        <main className="flex-1 px-4 sm:px-6 lg:px-8 py-5 sm:py-6">
+        {/* Content — with bottom padding for mobile tab bar */}
+        <main className="flex-1 px-3 sm:px-4 lg:px-8 py-3 sm:py-4 lg:py-6 pb-[72px] lg:pb-6">
           {loading ? (
             <div className="text-center py-24 text-muted">
               <RefreshCw className="w-7 h-7 animate-spin mx-auto mb-4" />
-              <span className="text-base">Завантаження даних...</span>
+              <span className="text-base">Завантаження...</span>
             </div>
           ) : (
             <>
@@ -147,9 +111,9 @@ export function AdminPanel() {
               {tab === 'finances' && (
                 <div className="flex items-center justify-center min-h-[60vh]">
                   <div className="text-center">
-                    <DollarSign className="w-16 h-16 text-muted/30 mx-auto mb-4" />
-                    <h2 className="text-2xl sm:text-3xl font-black text-text/30">Фінанси</h2>
-                    <p className="text-lg text-muted mt-2">Поки що недоступні</p>
+                    <DollarSign className="w-16 h-16 lg:w-20 lg:h-20 text-muted/30 mx-auto mb-4" />
+                    <h2 className="text-2xl lg:text-4xl font-black text-text/30">Фінанси</h2>
+                    <p className="text-base lg:text-lg text-muted mt-2">Поки що недоступні</p>
                   </div>
                 </div>
               )}
@@ -157,6 +121,30 @@ export function AdminPanel() {
           )}
         </main>
       </div>
+
+      {/* ═══ Mobile bottom tab bar ═══ */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-xl border-t border-border px-2 pb-[env(safe-area-inset-bottom)]">
+        <div className="flex items-center justify-around py-1.5">
+          {MENU_ITEMS.map(item => {
+            const Icon = item.icon;
+            const active = !item.external && tab === item.key;
+            return (
+              <button key={item.key} onClick={() => handleTabClick(item)}
+                className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl min-w-[60px] cursor-pointer transition-all ${active ? 'text-brand' : 'text-muted'}`}>
+                <div className="relative">
+                  <Icon className="w-5 h-5" />
+                  {item.key === 'online' && onlineCount > 0 && (
+                    <span className="absolute -top-1 -right-2 w-4 h-4 rounded-full text-[8px] font-bold flex items-center justify-center bg-green-500 text-white">
+                      {onlineCount}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] font-bold">{item.shortLabel}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 }
