@@ -11,6 +11,16 @@ interface Props {
 
 const CURRENCIES = ['UAH', 'EUR', 'CHF', 'USD', 'PLN', 'CZK'];
 
+const CONTENT_CATEGORIES = [
+  { id: 'clothes', label: 'Особисті речі', icon: '👕' },
+  { id: 'food', label: 'Продукти', icon: '🍪' },
+  { id: 'goods', label: 'Товар', icon: '📦' },
+  { id: 'tech', label: 'Техніка', icon: '⚙️' },
+  { id: 'docs', label: 'Документи', icon: '📄' },
+  { id: 'meds', label: 'Ліки', icon: '💊' },
+  { id: 'other', label: 'Інше', icon: '🧾' },
+];
+
 const emptyFormUaEu = {
   direction: 'UA → EU',
   recipient_name: '',
@@ -19,7 +29,6 @@ const emptyFormUaEu = {
   ttn: '',
   weight: '',
   estimated_value: '',
-  description: '',
   qty: '',
   amount: '',
   currency: 'EUR',
@@ -53,6 +62,26 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, boolean>>({});
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [otherText, setOtherText] = useState('');
+
+  const toggleCategory = (id: string) => {
+    setSelectedCategories(prev =>
+      prev.includes(id) ? prev.filter(c => c !== id) : [...prev, id]
+    );
+    setErrors(prev => ({ ...prev, description: false }));
+    setError('');
+  };
+
+  const buildDescription = () => {
+    const labels = selectedCategories
+      .map(id => {
+        if (id === 'other') return otherText.trim() ? `Інше: ${otherText.trim()}` : 'Інше';
+        return CONTENT_CATEGORIES.find(c => c.id === id)?.label || '';
+      })
+      .filter(Boolean);
+    return labels.join(', ');
+  };
 
   const updateUa = (k: string, v: string) => {
     setFormUa(prev => ({ ...prev, [k]: v }));
@@ -90,7 +119,7 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
         ttn: formUa.ttn,
         weight: formUa.weight,
         estimated_value: formUa.estimated_value,
-        description: formUa.description,
+        description: buildDescription(),
         qty: formUa.qty,
         amount: formUa.amount,
         currency: formUa.currency,
@@ -138,6 +167,8 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
       setShowModal(true);
       setFormUa(emptyFormUaEu);
       setFormEu(emptyFormEuUa);
+      setSelectedCategories([]);
+      setOtherText('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Помилка відправки');
     } finally {
@@ -225,10 +256,24 @@ export default function ParcelsScreen({ cliId, onNavigate }: Props) {
                 onChange={e => updateUa('estimated_value', e.target.value)} className={`${inputCls('estimated_value')} pl-10`} />
             </div>
 
-            <div className="relative">
-              <FileText size={16} className="absolute left-4 top-3.5 text-gray-400" />
-              <input placeholder="Опис вмісту" value={formUa.description}
-                onChange={e => updateUa('description', e.target.value)} className={`${inputCls('description')} pl-10`} />
+            <div>
+              <p className="text-xs text-gray-500 mb-2 flex items-center gap-1"><FileText size={14} /> Що передаєте?</p>
+              <div className="flex flex-wrap gap-2">
+                {CONTENT_CATEGORIES.map(cat => (
+                  <button key={cat.id} type="button" onClick={() => toggleCategory(cat.id)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
+                      selectedCategories.includes(cat.id)
+                        ? 'bg-accent text-white border-accent'
+                        : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-accent/50'
+                    }`}
+                  >{cat.icon} {cat.label}</button>
+                ))}
+              </div>
+              {selectedCategories.includes('other') && (
+                <input placeholder="Вкажіть що саме..." value={otherText}
+                  onChange={e => { setOtherText(e.target.value); setError(''); }}
+                  className={`${inputCls('otherText')} mt-2`} />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
