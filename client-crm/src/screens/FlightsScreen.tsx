@@ -138,6 +138,7 @@ export default function FlightsScreen({ onNavigate, onSelectFlight, flights, fli
                   </div>
                   <div>
                     <p className="font-bold text-navy text-sm">{flight.date}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{flight.auto_name}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Users size={12} className="text-status-confirmed" />
                       <span className="text-xs font-semibold text-status-confirmed">{flight.free_seats} вільних місць</span>

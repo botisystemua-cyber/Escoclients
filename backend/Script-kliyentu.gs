@@ -359,7 +359,7 @@ function handleCreateBooking(body) {
   row[9] = body.pax_name || '';              // Піб пасажира (J)
   row[10] = body.pax_phone || '';            // Телефон пасажира (K)
   row[11] = body.auto_id || '';              // AUTO_ID (L)
-  row[12] = '';                              // Місце (M)
+  row[12] = body.seat || 'Вільна розсадка';  // Місце (M)
   row[13] = body.price || '';                // Ціна (N)
   row[14] = body.currency || 'UAH';         // Валюта (O)
   row[15] = 'Не оплачено';                  // Статус оплати (P)
@@ -369,11 +369,15 @@ function handleCreateBooking(body) {
   row[19] = 'Очікує підтвердження';         // Статус бронювання (T)
   row[20] = body.note || '';                 // Примітка клієнта (U)
   row[21] = '';                              // Примітка менеджера (V)
+  row[22] = body.seat_surcharge || '0';      // Доплата за місце (W)
 
   sheet.appendRow(row);
 
   // Оновити к-сть бронювань в Клієнти
   updateClientCounter(cliId, 15); // К-сть бронювань (P, col 16)
+
+  // Записати в PASSENGERS таблицю
+  writeBookingToPassengers(body, bookingId, cliId, dateNow);
 
   return { ok: true, data: { booking_id: bookingId } };
 }
@@ -1122,6 +1126,67 @@ function updateClientCounter(cliId, colIndex) {
       sheet.getRange(rowNum, colIndex + 1).setValue(current + 1);
       return;
     }
+  }
+}
+
+/**
+ * Записати бронювання в PASSENGERS таблицю
+ * Аркуш визначається за напрямом: Україна-ЄВ або Європа-УК
+ */
+function writeBookingToPassengers(body, bookingId, cliId, dateNow) {
+  try {
+    var passSs = SpreadsheetApp.openById(PASSENGERS_ID);
+    var direction = (body.direction || '').toLowerCase();
+    var sheetName = (direction.indexOf('єв') >= 0 || direction.indexOf('eu') >= 0)
+      ? 'Європа-УК'
+      : 'Україна-ЄВ';
+    var sheet = passSs.getSheetByName(sheetName);
+    if (!sheet) return;
+
+    var paxId = genId('PAX');
+    var row = [];
+    row[0] = paxId;                                // PAX_ID (A)
+    row[1] = '';                                   // Ід_смарт (B)
+    row[2] = sheetName.replace('-', '_');           // Напрям (C)
+    row[3] = 'Клієнтська апка';                    // Джерело (D)
+    row[4] = dateNow;                              // Дата створення (E)
+    row[5] = body.pax_name || '';                   // ПІБ пасажира (F)
+    row[6] = body.pax_phone || '';                  // Телефон (G)
+    row[7] = '';                                   // Додатковий телефон (H)
+    row[8] = body.addr_from || '';                  // Адреса відправки (I)
+    row[9] = body.addr_to || '';                    // Адреса прибуття (J)
+    row[10] = body.seats || '1';                   // К-сть місць (K)
+    row[11] = body.seat || 'Вільна розсадка';      // Місце (L)
+    row[12] = '';                                  // Ціна (M)
+    row[13] = '';                                  // Валюта (N)
+    row[14] = '';                                  // Завдаток (O)
+    row[15] = '';                                  // Валюта завдатку (P)
+    row[16] = '';                                  // Форма оплати (Q)
+    row[17] = 'Не оплачено';                       // Статус оплати (R)
+    row[18] = '';                                  // Борг (S)
+    row[19] = '';                                  // Примітка оплати (T)
+    row[20] = body.date_trip || '';                 // Дата поїздки (U)
+    row[21] = '';                                  // Таймінг (V)
+    row[22] = '';                                  // Номер авто (W)
+    row[23] = body.auto_id || '';                   // AUTO_ID (X)
+    row[24] = body.rte_id || '';                    // RTE_ID (Y)
+    row[25] = body.cal_id || '';                    // CAL_ID (Z)
+    row[26] = 'Нова заявка';                       // Статус бронювання (AA)
+    row[27] = 'Нова заявка';                       // Статус ліда (AB)
+    row[28] = '';                                  // Статус CRM (AC)
+    row[29] = '';                                  // Контроль (AD)
+    row[30] = body.city || '';                      // Місто (AE)
+    row[31] = body.note || '';                      // Примітка клієнта (AF)
+    row[32] = '';                                  // Примітка менеджера (AG)
+    row[33] = 'Апка';                              // Тег (AH)
+    row[34] = cliId;                               // CLI_ID (AI)
+    row[35] = bookingId;                           // BOOKING_ID (AJ)
+    row[36] = body.seat_surcharge || '0';          // Доплата за місце (AK)
+
+    sheet.appendRow(row);
+  } catch (err) {
+    // Не блокуємо основне бронювання якщо PASSENGERS запис не вдався
+    Logger.log('writeBookingToPassengers error: ' + err.message);
   }
 }
 

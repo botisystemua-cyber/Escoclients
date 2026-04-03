@@ -167,7 +167,7 @@ function App() {
           onRefresh={loadFlightsData}
         />
       );
-      case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} onNavigate={navigate} /> : null;
+      case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} cliId={cliId || ''} onNavigate={navigate} /> : null;
       case 'parcels': return <ParcelsScreen cliId={cliId || ''} onNavigate={navigate} />;
       case 'orders': return <OrdersScreen cliId={cliId || ''} />;
       case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;

@@ -101,6 +101,12 @@ export interface BookingOrder {
   note_manager: string;
 }
 
+export async function createBooking(cliId: string, data: Record<string, string>) {
+  const json = await postApi('createBooking', { cli_id: cliId, ...data });
+  if (!json.ok) throw new Error(json.error || 'Помилка створення бронювання');
+  return json.data as { booking_id: string };
+}
+
 export async function getMyBookings(cliId: string) {
   const json = await postApi('getMyBookings', { cli_id: cliId });
   if (!json.ok) throw new Error(json.error || 'Помилка завантаження бронювань');
