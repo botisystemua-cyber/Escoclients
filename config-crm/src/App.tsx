@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Truck, ShieldCheck, Users, Eye, EyeOff, LogIn, Loader2, LogOut, ArrowLeft, CircleCheck, AlertCircle } from 'lucide-react';
+import { AdminPanel } from './components/AdminPanel';
+import { API_URL, type AuthUser } from './components/shared';
 
-const API_URL = 'https://script.google.com/macros/s/AKfycbyc23WPRGTjQJs-58cGYuCKBnJMbJItHsRwcHwttd6csZXNEo9MQrhW83inIHsmnJp-/exec';
 
 type Role = 'owner' | 'manager' | 'driver';
 
@@ -138,6 +139,11 @@ function App() {
     setPassword('');
     setError('');
   };
+
+  // Owner → full admin panel
+  if (step === 'success' && user && selectedRole?.key === 'owner') {
+    return <AdminPanel user={user as AuthUser} onLogout={handleLogout} />;
+  }
 
   return (
     <div className="w-full max-w-sm sm:max-w-md lg:max-w-lg mx-auto">
