@@ -7,7 +7,7 @@
 var KLIYENTU_ID = '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38';
 var PASSENGERS_ID = '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo';
 var CONFIG_ID = '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE';
-var API_URL = 'https://script.google.com/macros/s/AKfycbxUexY0xi7T4MeqFEPjktsFeukwsySbX6t78U7LjM7WcuQ6rVdcws5vElm4lMyT9C4Eng/exec';
+var API_URL = 'https://script.google.com/macros/s/AKfycby90xsjLFGfKwIAS49hVdj0Pd46SuW_34z8QXhWod-0Pk0k_6OK5u_MleNiBq1a5exx/exec';
 
 // =============================================
 // doGet — GET-запити
