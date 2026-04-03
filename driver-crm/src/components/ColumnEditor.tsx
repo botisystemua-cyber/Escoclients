@@ -47,10 +47,32 @@ const SHIPPING_COLUMNS = [
 
 interface Props { onClose: () => void; }
 
+// Combined columns for "all" tab (unique by key, preserving order)
+const ALL_COLUMNS = (() => {
+  const seen = new Set<string>();
+  const result: { key: string; label: string }[] = [];
+  for (const col of [...PASSENGER_COLUMNS, ...PACKAGE_COLUMNS, ...SHIPPING_COLUMNS]) {
+    if (!seen.has(col.key)) { seen.add(col.key); result.push(col); }
+  }
+  return result;
+})();
+
+// Combined package+shipping columns for "allPackages" tab
+const ALL_PACKAGE_COLUMNS = (() => {
+  const seen = new Set<string>();
+  const result: { key: string; label: string }[] = [];
+  for (const col of [...PACKAGE_COLUMNS, ...SHIPPING_COLUMNS]) {
+    if (!seen.has(col.key)) { seen.add(col.key); result.push(col); }
+  }
+  return result;
+})();
+
 export function ColumnEditor({ onClose }: Props) {
   const { hiddenCols, toggleCol, viewTab } = useApp();
   const columns = viewTab === 'shipping' ? SHIPPING_COLUMNS
     : viewTab === 'packages' ? PACKAGE_COLUMNS
+    : viewTab === 'allPackages' ? ALL_PACKAGE_COLUMNS
+    : viewTab === 'all' ? ALL_COLUMNS
     : PASSENGER_COLUMNS;
 
   return (

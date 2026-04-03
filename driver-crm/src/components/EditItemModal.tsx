@@ -108,6 +108,7 @@ export function EditItemModal({ item, onClose, onSaved }: Props) {
           fields['Таймінг'] = timing;
         } else {
           fields['Піб відправника'] = senderName;
+          fields['Телефон пасажира'] = senderPhone;
           fields['Телефон отримувача'] = recipientPhone;
           fields['Піб отримувача'] = recipientName;
           fields['Адреса отримувача'] = recipientAddr;
