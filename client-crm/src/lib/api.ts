@@ -31,14 +31,14 @@ export interface ClientProfile {
   app_status?: string;
 }
 
-export async function registerClient(phone: string, password: string, pib: string, email = '') {
-  const json = await postApi('register', { phone, password, pib, email });
+export async function registerClient(phone: string, pib: string) {
+  const json = await postApi('register', { phone, pib });
   if (!json.ok) throw new Error(json.error || 'Помилка реєстрації');
   return json.data as ClientProfile;
 }
 
-export async function loginClient(phone: string, password: string) {
-  const json = await postApi('login', { phone, password });
+export async function loginClient(phone: string) {
+  const json = await postApi('login', { phone });
   if (!json.ok) throw new Error(json.error || 'Помилка входу');
   return json.data as ClientProfile;
 }

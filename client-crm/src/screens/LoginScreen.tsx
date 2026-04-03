@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Truck, Phone, User, Lock, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Truck, Phone, User, Loader2 } from 'lucide-react';
 import { loginClient, registerClient } from '../lib/api';
 import type { ClientProfile } from '../lib/api';
 
@@ -10,11 +10,8 @@ interface Props {
 export default function LoginScreen({ onLogin }: Props) {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('+380');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -33,20 +30,9 @@ export default function LoginScreen({ onLogin }: Props) {
       return;
     }
 
-    if (!password || password.length < 4) {
-      setError('Пароль має бути мінімум 4 символи');
+    if (mode === 'register' && (!firstName.trim() || !lastName.trim())) {
+      setError("Введіть ім'я та прізвище");
       return;
-    }
-
-    if (mode === 'register') {
-      if (!firstName.trim() || !lastName.trim()) {
-        setError("Введіть ім'я та прізвище");
-        return;
-      }
-      if (password !== passwordConfirm) {
-        setError('Паролі не співпадають');
-        return;
-      }
     }
 
     setLoading(true);
@@ -54,9 +40,9 @@ export default function LoginScreen({ onLogin }: Props) {
       let profile: ClientProfile;
       if (mode === 'register') {
         const pib = `${firstName.trim()} ${lastName.trim()}`;
-        profile = await registerClient(cleaned, password, pib);
+        profile = await registerClient(cleaned, pib);
       } else {
-        profile = await loginClient(cleaned, password);
+        profile = await loginClient(cleaned);
       }
       onLogin(profile);
     } catch (err) {
@@ -69,8 +55,6 @@ export default function LoginScreen({ onLogin }: Props) {
   const switchMode = () => {
     setMode(mode === 'login' ? 'register' : 'login');
     setError('');
-    setPassword('');
-    setPasswordConfirm('');
   };
 
   return (
@@ -128,39 +112,6 @@ export default function LoginScreen({ onLogin }: Props) {
               autoFocus={mode === 'login'}
             />
           </div>
-
-          <div className="relative">
-            <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-200/50" />
-            <input
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Пароль"
-              value={password}
-              onChange={(e) => { setPassword(e.target.value); clearError(); }}
-              className={`${inputClass} pl-11 pr-12`}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-blue-200/50 hover:text-blue-200/80 transition-colors"
-            >
-              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-
-          {mode === 'register' && (
-            <div className="relative">
-              <Lock size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-200/50" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                placeholder="Повторіть пароль"
-                value={passwordConfirm}
-                onChange={(e) => { setPasswordConfirm(e.target.value); clearError(); }}
-                className={`${inputClass} pl-11`}
-                autoComplete="new-password"
-              />
-            </div>
-          )}
 
           {error && (
             <p className="text-red-400 text-xs pl-1">{error}</p>

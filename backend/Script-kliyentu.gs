@@ -105,11 +105,10 @@ function doPost(e) {
 
 function handleRegister(body) {
   var phone = (body.phone || '').trim();
-  var password = (body.password || '').trim();
   var pib = (body.pib || '').trim();
 
-  if (!phone || !password || !pib) {
-    return { ok: false, error: 'Телефон, пароль та ПІБ обовязкові' };
+  if (!phone || !pib) {
+    return { ok: false, error: 'Телефон та ПІБ обовязкові' };
   }
 
   var existing = findClientByPhone(phone);
@@ -120,7 +119,6 @@ function handleRegister(body) {
   var ss = SpreadsheetApp.openById(KLIYENTU_ID);
   var sheet = ss.getSheetByName('Клієнти');
   var cliId = genId('CLI');
-  var hash = hashPassword(password);
   var dateNow = now();
 
   var row = [];
@@ -131,7 +129,7 @@ function handleRegister(body) {
   row[4] = phone;           // Телефон (E)
   row[5] = '';             // Додатковий телефон (F)
   row[6] = pib;             // Піб (G)
-  row[7] = body.email || ''; // EMAIL (H)
+  row[7] = '';              // EMAIL (H)
   row[8] = '';             // Напрям (I)
   row[9] = 'Новий';        // Тип клієнта (J)
   row[10] = '';            // VIP (K)
@@ -162,42 +160,35 @@ function handleRegister(body) {
   row[35] = '';            // Останні 3 коментарі (AJ)
   row[36] = '';            // Останній відгук (AK)
   row[37] = '';            // Дата останнього відгуку (AL)
-  row[38] = hash;           // PASSWORD_HASH (AM)
+  row[38] = '';            // PASSWORD_HASH (AM) — не використовується
   row[39] = 'Активний';    // Статус апки (AN)
   row[40] = '';            // Примітка (AO)
 
   sheet.appendRow(row);
 
   // --- Записати в Config_crm_v2 ---
-  writeClientToConfig(cliId, pib, phone, body.email || '', hash, dateNow);
+  writeClientToConfig(cliId, pib, phone, '', '', dateNow);
 
   return {
     ok: true,
     data: {
       cli_id: cliId,
       phone: phone,
-      pib: pib,
-      email: body.email || ''
+      pib: pib
     }
   };
 }
 
 function handleLogin(body) {
   var phone = (body.phone || '').trim();
-  var password = (body.password || '').trim();
 
-  if (!phone || !password) {
-    return { ok: false, error: 'Телефон і пароль обовязкові' };
+  if (!phone) {
+    return { ok: false, error: 'Телефон обовязковий' };
   }
 
   var client = findClientByPhone(phone);
   if (!client) {
     return { ok: false, error: 'Клієнта з таким телефоном не знайдено' };
-  }
-
-  var storedHash = client.row[38]; // PASSWORD_HASH (AM)
-  if (hashPassword(password) !== storedHash) {
-    return { ok: false, error: 'Невірний пароль' };
   }
 
   // Оновити останню активність
