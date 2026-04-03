@@ -6,6 +6,7 @@
 
 var KLIYENTU_ID = '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38';
 var PASSENGERS_ID = '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo';
+var API_URL = 'https://script.google.com/macros/s/AKfycbxUexY0xi7T4MeqFEPjktsFeukwsySbX6t78U7LjM7WcuQ6rVdcws5vElm4lMyT9C4Eng/exec';
 
 // =============================================
 // doGet — GET-запити

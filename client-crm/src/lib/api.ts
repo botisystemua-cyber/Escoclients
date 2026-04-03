@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxkCTZ7Dfj8_4mEvwR3yCc6Dm7Ll28jG-NC1AEWrGL0K3-3l-t9MJEXOK9xMYVHAL-WPA/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbxUexY0xi7T4MeqFEPjktsFeukwsySbX6t78U7LjM7WcuQ6rVdcws5vElm4lMyT9C4Eng/exec';
 
 export async function fetchFlights() {
   const res = await fetch(`${API_URL}?action=getTrips`);
