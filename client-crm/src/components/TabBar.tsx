@@ -15,7 +15,7 @@ const tabs: { id: Tab; label: string; icon: typeof Home }[] = [
   { id: 'chat', label: 'Чат', icon: MessageCircle },
 ];
 
-const disabledTabs: Tab[] = ['parcels'];
+const disabledTabs: Tab[] = [];
 
 export default function TabBar({ active, onTab, chatBadge }: TabBarProps) {
   return (
