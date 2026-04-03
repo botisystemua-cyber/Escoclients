@@ -3326,6 +3326,23 @@ async function routeBulkDeleteFromRoute() {
     });
 }
 
+// ── Визначити правильну колонку та значення ID для рядка маршруту ──
+function getRouteRowIdInfo(row) {
+    if (row['RTE_ID']) return { id_col: 'RTE_ID', id_val: row['RTE_ID'] };
+    if (row['PAX_ID / PKG_ID']) return { id_col: 'PAX_ID / PKG_ID', id_val: row['PAX_ID / PKG_ID'] };
+    if (row['PAX_ID/PKG_ID']) return { id_col: 'PAX_ID/PKG_ID', id_val: row['PAX_ID/PKG_ID'] };
+    return null;
+}
+
+// ── Очистити row від фронтенд-властивостей перед відправкою на бекенд ──
+function cleanRowForApi(row) {
+    const clean = {};
+    for (const key of Object.keys(row)) {
+        if (!key.startsWith('_')) clean[key] = row[key];
+    }
+    return clean;
+}
+
 // ── Пересадити лід в інший маршрут ──
 function transferRouteLeadModal(rteId, sheetName) {
     const otherRoutes = routes.filter((r, i) => i !== activeRouteIdx);
@@ -3348,12 +3365,16 @@ async function doTransferRouteLead(rteId, fromSheet, toSheet) {
     const row = (sheet.rows || []).find(r => r._resolvedId === rteId || r['RTE_ID'] === rteId);
     if (!row) return;
 
+    // Визначаємо правильну колонку і значення для видалення
+    const idInfo = getRouteRowIdInfo(row);
+    if (!idInfo) { showToast('❌ Не вдалося визначити ID запису'); return; }
+
     showLoader('Пересадка...');
-    // Add to new route
-    const addRes = await apiPost('addToRoute', { sheetName: toSheet, leads: [row] });
+    // Add to new route (без фронтенд-властивостей)
+    const addRes = await apiPost('addToRoute', { sheetName: toSheet, leads: [cleanRowForApi(row)] });
     if (!addRes.ok) { hideLoader(); showToast('❌ ' + (addRes.error || 'Помилка додавання')); return; }
-    // Delete from old route
-    const delRes = await apiPost('deleteFromSheet', { sheet: fromSheet, id_col: 'RTE_ID', id_val: rteId });
+    // Delete from old route (з правильним id_col)
+    const delRes = await apiPost('deleteFromSheet', { sheet: fromSheet, id_col: idInfo.id_col, id_val: idInfo.id_val });
     hideLoader();
     if (delRes.ok) {
         // Видаляємо зі старого маршруту
@@ -3366,7 +3387,7 @@ async function doTransferRouteLead(rteId, fromSheet, toSheet) {
         renderRoutes();
         showToast('✅ Пересаджено в ' + toSheet.replace('Маршрут_', ''));
     } else {
-        showToast('⚠️ Додано в новий маршрут, але не видалено зі старого');
+        showToast('⚠️ Додано в новий маршрут, але не видалено зі старого: ' + (delRes.error || ''));
     }
 }
 
@@ -3392,14 +3413,32 @@ async function doBulkTransfer(toSheet) {
     if (!sheet) return;
     showLoader('Пересадка ' + routeSelectedIds.size + ' записів...');
 
-    const leadsToMove = (sheet.rows || []).filter(r => routeSelectedIds.has(r._resolvedId || r['RTE_ID']));
+    // Збираємо рядки для переносу та їхні ID-дані для видалення
+    const leadsToMove = [];
+    const deleteInfos = [];
+    for (const row of (sheet.rows || [])) {
+        const resolvedId = row._resolvedId || row['RTE_ID'];
+        if (!routeSelectedIds.has(resolvedId)) continue;
+        leadsToMove.push(cleanRowForApi(row));
+        const idInfo = getRouteRowIdInfo(row);
+        if (idInfo) deleteInfos.push({ ...idInfo, resolvedId });
+    }
+
+    if (leadsToMove.length === 0) { hideLoader(); showToast('⚠️ Не знайдено записів для переносу'); return; }
+
     const addRes = await apiPost('addToRoute', { sheetName: toSheet, leads: leadsToMove });
-    if (!addRes.ok) { hideLoader(); showToast('❌ ' + (addRes.error || 'Помилка')); return; }
+    if (!addRes.ok) { hideLoader(); showToast('❌ ' + (addRes.error || 'Помилка додавання')); return; }
 
     let ok = 0;
-    for (const rteId of routeSelectedIds) {
-        const res = await apiPost('deleteFromSheet', { sheet: sheet.sheetName, id_col: 'RTE_ID', id_val: rteId });
-        if (res.ok) { ok++; sheet.rows = (sheet.rows || []).filter(r => (r._resolvedId || r['RTE_ID']) !== rteId); }
+    let failed = 0;
+    for (const info of deleteInfos) {
+        const res = await apiPost('deleteFromSheet', { sheet: sheet.sheetName, id_col: info.id_col, id_val: info.id_val });
+        if (res.ok) {
+            ok++;
+            sheet.rows = (sheet.rows || []).filter(r => (r._resolvedId || r['RTE_ID']) !== info.resolvedId);
+        } else {
+            failed++;
+        }
     }
     // Інвалідуємо цільовий маршрут
     var targetRoute = routes.find(function(r) { return r.sheetName === toSheet; });
@@ -3410,7 +3449,11 @@ async function doBulkTransfer(toSheet) {
     updateRouteBulkToolbar();
     renderRouteSidebar();
     renderRoutes();
-    showToast('✅ Пересаджено: ' + ok + ' в ' + toSheet.replace('Маршрут_', ''));
+    if (failed > 0) {
+        showToast('⚠️ Перенесено: ' + ok + ', не видалено зі старого: ' + failed);
+    } else {
+        showToast('✅ Пересаджено: ' + ok + ' в ' + toSheet.replace('Маршрут_', ''));
+    }
 }
 
 // ── Створення нового маршруту ──
