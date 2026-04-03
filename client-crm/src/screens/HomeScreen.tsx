@@ -1,10 +1,18 @@
-import { Bus, Package, User, MessageCircle, Tag } from 'lucide-react';
+import { Bus, Package, User, MessageCircle, Tag, Flame } from 'lucide-react';
 import type { Screen } from '../types';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
   userName: string | null;
 }
+
+const PROMOS = [
+  '🔥 Знижка -20% на першу поїздку для нових клієнтів!',
+  '📦 Безкоштовна доставка посилок від 15 кг до точки видачі',
+  '🎁 Приведи друга — отримай 10 CHF бонусу на рахунок',
+  '⚡ Гаряча пропозиція: Цюрих — Львів від 50 CHF',
+  '🧳 Тариф "Максимум" — багаж 30 кг + адресна доставка',
+];
 
 export default function HomeScreen({ onNavigate, userName }: Props) {
   const displayName = userName ? userName.split(' ')[0] : 'Клієнт';
@@ -24,6 +32,20 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
           >
             <User size={24} className="text-white" />
           </button>
+        </div>
+
+        {/* Marquee — running promo line */}
+        <div className="mt-4 overflow-hidden rounded-xl bg-white/10 backdrop-blur border border-white/10">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Flame size={14} className="text-amber-400 shrink-0 animate-pulse" />
+            <div className="overflow-hidden flex-1">
+              <div className="flex whitespace-nowrap animate-marquee">
+                {[...PROMOS, ...PROMOS].map((text, i) => (
+                  <span key={i} className="text-xs text-blue-100 font-medium mx-6">{text}</span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
