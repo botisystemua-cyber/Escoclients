@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycbxyTfI9jDION3smCIcn5tceoUFBqV7yqEagFTJB9vqk4hj0z--vQfecxrrIV8e9d7KW0Q/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwsux-lY-rzC0ToyOuDiZADRuCHmLY5EqbpO9v7wHjr_zLe97SRJIub6SwbOKK9Lb5kZg/exec';
 
 async function postApi(action: string, data: Record<string, string | number>) {
   const res = await fetch(API_URL, {
