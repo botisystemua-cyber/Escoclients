@@ -172,7 +172,7 @@ function App() {
       case 'orders': return <OrdersScreen cliId={cliId || ''} />;
       case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;
       case 'tariffs': return <TariffsScreen onNavigate={navigate} />;
-      case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} />;
+      case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} cliId={cliId} />;
       default: return null;
     }
   };

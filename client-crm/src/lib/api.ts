@@ -125,6 +125,22 @@ export async function cancelOrder(cliId: string, orderId: string) {
   return json;
 }
 
+export async function getProfile(cliId: string) {
+  const json = await postApi('getProfile', { cli_id: cliId });
+  if (!json.ok) throw new Error(json.error || 'Помилка завантаження профілю');
+  return json.data as ClientProfile & {
+    rating_driver: number;
+    rating_manager: number;
+    internal_rating: number;
+    trips_count: number;
+    packages_count: number;
+    bookings_count: number;
+    debt_chf: number;
+    debt_eur: number;
+    debt_uah: number;
+  };
+}
+
 export async function fetchFlights() {
   const res = await fetch(`${API_URL}?action=getTrips`);
   const json = await res.json();
