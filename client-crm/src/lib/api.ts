@@ -168,6 +168,8 @@ export async function markRead(cliId: string) {
   const json = await postApi('markRead', { cli_id: cliId });
   return json;
 }
+
+export async function fetchFlights() {
   const res = await fetch(`${API_URL}?action=getTrips`);
   const json = await res.json();
 
