@@ -1,4 +1,4 @@
-import { Bus, Package, User, MessageCircle, Tag, Wrench } from 'lucide-react';
+import { Bus, Package, User, MessageCircle, Tag } from 'lucide-react';
 import type { Screen } from '../types';
 
 interface Props {
@@ -44,21 +44,18 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
             </div>
           </button>
 
-          <div
-            className="bg-gray-100 border-2 border-gray-200 rounded-2xl p-7 text-left flex flex-col justify-between min-h-[260px] md:min-h-[220px] md:p-6 relative overflow-hidden opacity-60 cursor-not-allowed"
+          <button
+            onClick={() => onNavigate('parcels')}
+            className="bg-white border-2 border-navy/80 rounded-2xl p-7 text-left active:scale-[0.97] transition-transform flex flex-col justify-between min-h-[260px] md:min-h-[220px] md:p-6 md:hover:shadow-lg md:hover:border-accent md:transition-all"
           >
-            <div className="absolute top-3 right-3 flex items-center gap-1 bg-gray-200 text-gray-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-              <Wrench size={10} />
-              В розробці
-            </div>
-            <div className="w-16 h-16 md:w-16 md:h-16 bg-gray-200 rounded-2xl flex items-center justify-center">
-              <Package size={34} className="text-gray-400" />
+            <div className="w-16 h-16 md:w-16 md:h-16 bg-accent/10 rounded-2xl flex items-center justify-center">
+              <Package size={34} className="text-accent" />
             </div>
             <div className="mt-auto pt-5 md:pt-4">
-              <p className="text-gray-400 font-extrabold text-lg md:text-lg leading-tight line-through">Відправити посилку</p>
-              <p className="text-gray-300 text-sm md:text-sm mt-2 md:mt-1 line-through">Україна ⇄ Європа</p>
+              <p className="text-navy font-extrabold text-lg md:text-lg leading-tight">Відправити посилку</p>
+              <p className="text-gray-400 text-sm md:text-sm mt-2 md:mt-1">Україна ⇄ Європа</p>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={() => onNavigate('chat')}
