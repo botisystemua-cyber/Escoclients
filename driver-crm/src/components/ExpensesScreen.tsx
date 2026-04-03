@@ -229,28 +229,19 @@ export function ExpensesScreen() {
                           {adv.card > 0 && <>{adv.card} {adv.cardCurrency}</>}
                         </span>
                       </div>
-                      <button onClick={() => setShowAdvanceModal(rn)}
-                        className="p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer active:scale-90 transition-all">
-                        <Pencil className="w-3.5 h-3.5 text-muted" />
-                      </button>
+                      {!isUnifiedView && (
+                        <button onClick={() => setShowAdvanceModal(rn)}
+                          className="p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer active:scale-90 transition-all">
+                          <Pencil className="w-3.5 h-3.5 text-muted" />
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Add/edit advance buttons */}
-              {isUnifiedView ? (
-                <div className="flex gap-1.5">
-                  {routeNames.map((rn) => (
-                    <button key={rn} onClick={() => setShowAdvanceModal(rn)}
-                      className="flex-1 py-2 rounded-xl text-[11px] font-bold cursor-pointer bg-gray-50 text-gray-500 hover:bg-gray-100 transition-all">
-                      {advances[rn] && (advances[rn]!.cash > 0 || advances[rn]!.card > 0)
-                        ? `${rn.replace('Маршрут_', 'М')} ✏️`
-                        : `+ ${rn.replace('Маршрут_', 'М')}`}
-                    </button>
-                  ))}
-                </div>
-              ) : (
+              {/* Add/edit advance buttons (hidden in unified view) */}
+              {!isUnifiedView && (
                 <button onClick={() => setShowAdvanceModal(currentSheet)}
                   className="w-full py-2.5 rounded-xl text-xs font-bold cursor-pointer bg-gray-50 text-gray-500 hover:bg-gray-100 transition-all flex items-center justify-center gap-1.5">
                   <Pencil className="w-3.5 h-3.5" />
@@ -264,7 +255,7 @@ export function ExpensesScreen() {
               <div className="flex flex-col items-center justify-center py-12">
                 <Receipt className="w-10 h-10 text-border mb-3" strokeWidth={1} />
                 <p className="text-muted text-sm">Немає витрат</p>
-                <p className="text-muted text-xs mt-1">Натисни + щоб додати</p>
+                {!isUnifiedView && <p className="text-muted text-xs mt-1">Натисни + щоб додати</p>}
               </div>
             ) : (
               items.map((item) => {
@@ -291,10 +282,12 @@ export function ExpensesScreen() {
                       <div className="text-base font-black text-text">{item.amount}</div>
                       <div className="text-[10px] font-semibold text-muted">{item.currency}</div>
                     </div>
-                    <button onClick={() => handleDelete(item)}
-                      className="p-2 rounded-xl hover:bg-red-50 cursor-pointer active:scale-90 transition-all shrink-0">
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </button>
+                    {!isUnifiedView && (
+                      <button onClick={() => handleDelete(item)}
+                        className="p-2 rounded-xl hover:bg-red-50 cursor-pointer active:scale-90 transition-all shrink-0">
+                        <Trash2 className="w-4 h-4 text-red-400" />
+                      </button>
+                    )}
                   </div>
                 );
               })
@@ -303,8 +296,8 @@ export function ExpensesScreen() {
         )}
       </div>
 
-      {/* Add button */}
-      {!loading && (
+      {/* Add button (hidden in unified view) */}
+      {!loading && !isUnifiedView && (
         <div className="shrink-0 bg-white border-t border-border px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button onClick={() => setShowAdd(true)}
             className="w-full py-3.5 rounded-2xl bg-brand text-white font-bold text-sm flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98] transition-all">
@@ -343,21 +336,46 @@ function AdvanceModal({ routeName, advance, onClose, onSave }: {
   onClose: () => void;
   onSave: (routeName: string, cash: string, cashCurrency: string, card: string, cardCurrency: string) => void;
 }) {
-  const [cash, setCash] = useState(advance?.cash ? String(advance.cash) : '');
-  const [cashCurrency, setCashCurrency] = useState(advance?.cashCurrency || 'UAH');
-  const [card, setCard] = useState(advance?.card ? String(advance.card) : '');
-  const [cardCurrency, setCardCurrency] = useState(advance?.cardCurrency || 'UAH');
+  // Determine initial type based on existing advance data
+  const initialType: 'cash' | 'card' = advance && advance.card > 0 && !(advance.cash > 0) ? 'card' : 'cash';
+  const [type, setType] = useState<'cash' | 'card'>(initialType);
+  const [amount, setAmount] = useState(
+    initialType === 'cash'
+      ? (advance?.cash ? String(advance.cash) : '')
+      : (advance?.card ? String(advance.card) : '')
+  );
+  const [currency, setCurrency] = useState(
+    initialType === 'cash'
+      ? (advance?.cashCurrency || 'UAH')
+      : (advance?.cardCurrency || 'UAH')
+  );
   const [submitting, setSubmitting] = useState(false);
+
+  const handleTypeChange = (newType: 'cash' | 'card') => {
+    setType(newType);
+    // Load the value for the selected type from advance if available
+    if (newType === 'cash') {
+      setAmount(advance?.cash ? String(advance.cash) : '');
+      setCurrency(advance?.cashCurrency || 'UAH');
+    } else {
+      setAmount(advance?.card ? String(advance.card) : '');
+      setCurrency(advance?.cardCurrency || 'UAH');
+    }
+  };
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await onSave(routeName, cash || '0', cashCurrency, card || '0', cardCurrency);
+    if (type === 'cash') {
+      await onSave(routeName, amount || '0', currency, '0', 'UAH');
+    } else {
+      await onSave(routeName, '0', 'UAH', amount || '0', currency);
+    }
     setSubmitting(false);
   };
 
   const handleClear = async () => {
     setSubmitting(true);
-    await onSave(routeName, '0', cashCurrency, '0', cardCurrency);
+    await onSave(routeName, '0', 'UAH', '0', 'UAH');
     setSubmitting(false);
   };
 
@@ -376,42 +394,36 @@ function AdvanceModal({ routeName, advance, onClose, onSave }: {
         </div>
 
         <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
-          {/* Cash */}
+          {/* Cash / Card toggle */}
+          <div className="flex gap-2">
+            <button onClick={() => handleTypeChange('cash')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all ${
+                type === 'cash' ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
+              }`}>Готівка</button>
+            <button onClick={() => handleTypeChange('card')}
+              className={`flex-1 py-2.5 rounded-xl text-sm font-bold cursor-pointer transition-all ${
+                type === 'card' ? 'bg-brand text-white shadow-sm' : 'bg-gray-100 text-gray-400'
+              }`}>Картка</button>
+          </div>
+
+          {/* Amount */}
           <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Готівка</div>
+            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">
+              {type === 'cash' ? 'Сума готівкою' : 'Сума на картку'}
+            </div>
             <input
               autoFocus
               type="text" inputMode="decimal"
-              value={cash}
-              onChange={(e) => setCash(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
               placeholder="0"
               className="w-full text-xl font-black text-text bg-gray-50 rounded-xl px-3 py-3 border border-border focus:border-brand focus:outline-none"
             />
             <div className="flex gap-1.5 mt-1.5">
               {CURRENCIES.map((c) => (
-                <button key={c} onClick={() => setCashCurrency(c)}
+                <button key={c} onClick={() => setCurrency(c)}
                   className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
-                    cashCurrency === c ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'
-                  }`}>{c}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Card */}
-          <div>
-            <div className="text-[10px] font-bold text-muted uppercase tracking-wider mb-1.5">Картка</div>
-            <input
-              type="text" inputMode="decimal"
-              value={card}
-              onChange={(e) => setCard(e.target.value.replace(/[^0-9.,]/g, '').replace(',', '.'))}
-              placeholder="0"
-              className="w-full text-xl font-black text-text bg-gray-50 rounded-xl px-3 py-3 border border-border focus:border-brand focus:outline-none"
-            />
-            <div className="flex gap-1.5 mt-1.5">
-              {CURRENCIES.map((c) => (
-                <button key={c} onClick={() => setCardCurrency(c)}
-                  className={`flex-1 py-1.5 rounded-lg text-[10px] font-bold cursor-pointer transition-all ${
-                    cardCurrency === c ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'
+                    currency === c ? 'bg-brand text-white' : 'bg-gray-100 text-gray-400'
                   }`}>{c}</button>
               ))}
             </div>
