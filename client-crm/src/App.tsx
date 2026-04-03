@@ -49,6 +49,7 @@ function mapFlights(data: Awaited<ReturnType<typeof fetchFlights>>): Flight[] {
         from_city: cities.from,
         to_city: cities.to,
         date: formatDate(t.date),
+        raw_date: t.date,
         direction: formatDirection(t.direction),
         auto_name: t.auto_name,
         max_seats: t.max_seats,

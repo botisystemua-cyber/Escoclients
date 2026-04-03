@@ -10,6 +10,7 @@ export interface Flight {
   from_city: string;
   to_city: string;
   date: string;
+  raw_date: string;
   direction: string;
   auto_name: string;
   max_seats: number;
