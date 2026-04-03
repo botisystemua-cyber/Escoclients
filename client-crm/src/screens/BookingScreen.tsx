@@ -131,49 +131,67 @@ export default function BookingScreen({ flight, cliId, onNavigate }: Props) {
           <input placeholder="ПІБ пасажира *" value={form.name} onChange={e => update('name', e.target.value)} className={inputCls('name')} />
           <input placeholder="Телефон *" type="tel" value={form.phone} onChange={e => update('phone', e.target.value)} className={inputCls('phone')} />
           {/* From — pickup point */}
-          <div className="relative">
-            <button type="button" onClick={() => { setShowFromList(!showFromList); setShowToList(false); }}
-              className={`w-full px-4 py-3 bg-gray-50 border ${errors.from ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
-              <span className={form.from ? 'text-gray-900' : 'text-gray-400'}>{form.from || 'Посадка / відправка *'}</span>
-              <ChevronDown size={14} className="text-gray-400" />
-            </button>
-            {showFromList && (
-              <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
-                {(isUaToEu ? POINTS_UA : POINTS_CH).map(p => (
-                  <button key={p.label} type="button" onClick={() => {
-                    if (p.value) { update('from', p.value); setCustomFrom(false); }
-                    else { update('from', ''); setCustomFrom(true); }
-                    setShowFromList(false);
-                  }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
-                ))}
+          {isUaToEu ? (
+            /* UA→EU: посадка просто Львів */
+            <input placeholder="Місто посадки *" value={form.from} onChange={e => update('from', e.target.value)}
+              className={inputCls('from')} defaultValue="Львів" />
+          ) : (
+            /* EU→UA: посадка зі списку CH точок */
+            <>
+              <div className="relative">
+                <button type="button" onClick={() => { setShowFromList(!showFromList); setShowToList(false); }}
+                  className={`w-full px-4 py-3 bg-gray-50 border ${errors.from ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
+                  <span className={form.from ? 'text-gray-900 truncate pr-2' : 'text-gray-400'}>{form.from || 'Точка посадки *'}</span>
+                  <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                </button>
+                {showFromList && (
+                  <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
+                    {POINTS_CH.map(p => (
+                      <button key={p.label} type="button" onClick={() => {
+                        if (p.value) { update('from', p.value); setCustomFrom(false); }
+                        else { update('from', ''); setCustomFrom(true); }
+                        setShowFromList(false);
+                      }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {customFrom && (
-            <input placeholder="Вкажіть адресу посадки *" value={form.from} onChange={e => update('from', e.target.value)} className={inputCls('from')} />
+              {customFrom && (
+                <input placeholder="Вкажіть адресу посадки *" value={form.from} onChange={e => update('from', e.target.value)} className={inputCls('from')} />
+              )}
+            </>
           )}
 
           {/* To — dropoff point */}
-          <div className="relative">
-            <button type="button" onClick={() => { setShowToList(!showToList); setShowFromList(false); }}
-              className={`w-full px-4 py-3 bg-gray-50 border ${errors.to ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
-              <span className={form.to ? 'text-gray-900' : 'text-gray-400'}>{form.to || 'Висадка / прибуття *'}</span>
-              <ChevronDown size={14} className="text-gray-400" />
-            </button>
-            {showToList && (
-              <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
-                {(isUaToEu ? POINTS_CH : POINTS_UA).map(p => (
-                  <button key={p.label} type="button" onClick={() => {
-                    if (p.value) { update('to', p.value); setCustomTo(false); }
-                    else { update('to', ''); setCustomTo(true); }
-                    setShowToList(false);
-                  }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
-                ))}
+          {isUaToEu ? (
+            /* UA→EU: висадка зі списку CH точок */
+            <>
+              <div className="relative">
+                <button type="button" onClick={() => { setShowToList(!showToList); setShowFromList(false); }}
+                  className={`w-full px-4 py-3 bg-gray-50 border ${errors.to ? 'border-red-400' : 'border-gray-200'} rounded-xl text-sm text-left flex items-center justify-between`}>
+                  <span className={form.to ? 'text-gray-900 truncate pr-2' : 'text-gray-400'}>{form.to || 'Точка висадки *'}</span>
+                  <ChevronDown size={14} className="text-gray-400 shrink-0" />
+                </button>
+                {showToList && (
+                  <div className="absolute z-20 mt-1 w-full bg-white rounded-xl shadow-lg border border-gray-100 max-h-52 overflow-y-auto animate-fade-in">
+                    {POINTS_CH.map(p => (
+                      <button key={p.label} type="button" onClick={() => {
+                        if (p.value) { update('to', p.value); setCustomTo(false); }
+                        else { update('to', ''); setCustomTo(true); }
+                        setShowToList(false);
+                      }} className="w-full px-4 py-2.5 text-left text-xs hover:bg-accent/5 transition-colors text-gray-700">{p.label}</button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-          {customTo && (
-            <input placeholder="Вкажіть адресу прибуття *" value={form.to} onChange={e => update('to', e.target.value)} className={inputCls('to')} />
+              {customTo && (
+                <input placeholder="Вкажіть адресу висадки *" value={form.to} onChange={e => update('to', e.target.value)} className={inputCls('to')} />
+              )}
+            </>
+          ) : (
+            /* EU→UA: висадка просто Львів */
+            <input placeholder="Місто висадки *" value={form.to} onChange={e => update('to', e.target.value)}
+              className={inputCls('to')} defaultValue="Львів" />
           )}
 
           <div>

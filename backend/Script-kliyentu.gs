@@ -71,6 +71,8 @@ function doPost(e) {
         return respond(handleCreateOrder(body));
       case 'getMyOrders':
         return respond(handleGetMyOrders(body));
+      case 'cancelOrder':
+        return respond(handleCancelOrder(body));
 
       // --- Чат ---
       case 'getMessages':
@@ -430,16 +432,86 @@ function handleCancelBooking(body) {
   var ss = SpreadsheetApp.openById(KLIYENTU_ID);
   var sheet = ss.getSheetByName('Бронювання');
   var data = getSheetData(sheet);
+  var dateNow = now();
 
   for (var i = 0; i < data.length; i++) {
     if (data[i][0] === bookingId && data[i][1] === cliId) {
       var rowNum = i + 2;
       sheet.getRange(rowNum, 20).setValue('Скасовано клієнтом'); // Статус бронювання (T)
+
+      // Знайти клієнта для логу
+      var client = findClientById(cliId);
+      var clientPib = client ? client.row[6] : '';
+
+      // Лог скасування в Config
+      logAccess(cliId, clientPib, 'Клієнт', 'Скасування бронювання: ' + bookingId, 'KLIYENTU', 'Бронювання', '', dateNow);
+
       return { ok: true, msg: 'Бронювання скасовано' };
     }
   }
 
   return { ok: false, error: 'Бронювання не знайдено' };
+}
+
+function handleCancelOrder(body) {
+  var cliId = (body.cli_id || '').trim();
+  var orderId = (body.order_id || '').trim();
+  if (!cliId || !orderId) return { ok: false, error: 'cli_id і order_id обовязкові' };
+
+  var ss = SpreadsheetApp.openById(KLIYENTU_ID);
+  var sheet = ss.getSheetByName('Замовлення');
+  var data = getSheetData(sheet);
+  var dateNow = now();
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] === orderId && data[i][1] === cliId) {
+      var rowNum = i + 2;
+      // Статус замовлення — знайти колонку статусу
+      sheet.getRange(rowNum, 18).setValue('Скасовано клієнтом'); // Статус (R)
+
+      // Також оновити статус в POSYLKI таблиці
+      cancelInPosylki(data[i]);
+
+      // Знайти клієнта для логу
+      var client = findClientById(cliId);
+      var clientPib = client ? client.row[6] : '';
+
+      // Лог скасування
+      logAccess(cliId, clientPib, 'Клієнт', 'Скасування посилки: ' + orderId, 'KLIYENTU', 'Замовлення', '', dateNow);
+
+      return { ok: true, msg: 'Замовлення скасовано' };
+    }
+  }
+
+  return { ok: false, error: 'Замовлення не знайдено' };
+}
+
+/**
+ * Скасувати посилку в POSYLKI таблиці
+ */
+function cancelInPosylki(orderRow) {
+  try {
+    var pkgId = orderRow[15] || ''; // PKG_ID
+    if (!pkgId) return;
+
+    var posSs = SpreadsheetApp.openById(POSYLKI_ID);
+    var sheets = ['Реєстрація ТТН УК-єв', 'Виклик Курєра ЄВ-ук'];
+
+    for (var s = 0; s < sheets.length; s++) {
+      var sheet = posSs.getSheetByName(sheets[s]);
+      if (!sheet) continue;
+      var data = getSheetData(sheet);
+      for (var i = 0; i < data.length; i++) {
+        if (data[i][0] === pkgId) {
+          var statusCol = sheets[s] === 'Реєстрація ТТН УК-єв' ? 36 : 35; // Статус посилки
+          sheet.getRange(i + 2, statusCol).setValue('Скасовано клієнтом');
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    Logger.log('cancelInPosylki error: ' + err.message);
+  }
 }
 
 // =============================================

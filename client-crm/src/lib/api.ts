@@ -113,6 +113,18 @@ export async function getMyBookings(cliId: string) {
   return json.data as BookingOrder[];
 }
 
+export async function cancelBooking(cliId: string, bookingId: string) {
+  const json = await postApi('cancelBooking', { cli_id: cliId, booking_id: bookingId });
+  if (!json.ok) throw new Error(json.error || 'Помилка скасування');
+  return json;
+}
+
+export async function cancelOrder(cliId: string, orderId: string) {
+  const json = await postApi('cancelOrder', { cli_id: cliId, order_id: orderId });
+  if (!json.ok) throw new Error(json.error || 'Помилка скасування');
+  return json;
+}
+
 export async function fetchFlights() {
   const res = await fetch(`${API_URL}?action=getTrips`);
   const json = await res.json();
