@@ -66,8 +66,8 @@ export default function LoginScreen({ onLogin }: Props) {
             <Truck size={80} className="text-white hidden md:block" />
           </div>
           <h1 className="text-2xl md:text-4xl font-extrabold tracking-tight">
-            <span className="text-white">BOTI</span>
-            <span className="text-emerald-400">LOGISTICS</span>
+            <span className="text-amber-400">Esco</span>
+            <span className="text-white">Express</span>
           </h1>
           <p className="text-blue-200/70 text-sm md:text-base mt-1">
             {mode === 'login' ? 'Вхід в особистий кабінет' : 'Створення кабінету'}

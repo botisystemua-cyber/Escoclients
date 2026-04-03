@@ -15,7 +15,7 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
       <div className="bg-navy px-5 pt-8 pb-6 rounded-b-3xl md:rounded-none md:px-10 md:pt-10 md:pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm md:text-base font-bold tracking-wide mb-1"><span className="text-white">BOTI</span><span className="text-emerald-400">LOGISTICS</span></p>
+            <p className="text-sm md:text-base font-bold tracking-wide mb-1"><span className="text-amber-400">Esco</span><span className="text-white">Express</span></p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Привіт, {displayName}! 👋</h1>
           </div>
           <button
