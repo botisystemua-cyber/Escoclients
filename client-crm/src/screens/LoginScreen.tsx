@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { Truck, Phone, User, Loader2 } from 'lucide-react';
+import { loginClient, registerClient } from '../lib/api';
+import type { ClientProfile } from '../lib/api';
 
 interface Props {
-  onLogin: (phone: string, name: string) => void;
+  onLogin: (profile: ClientProfile) => void;
 }
 
 export default function LoginScreen({ onLogin }: Props) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [phone, setPhone] = useState('+380');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -15,14 +18,11 @@ export default function LoginScreen({ onLogin }: Props) {
   const inputClass =
     'w-full px-4 py-3.5 bg-white/10 backdrop-blur border border-white/20 rounded-xl text-white placeholder-blue-200/50 outline-none transition-all duration-200 focus:border-accent focus:ring-1 focus:ring-accent';
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const clearError = () => setError('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("Введіть ім'я та прізвище");
-      return;
-    }
 
     const cleaned = phone.replace(/[\s\-()]/g, '');
     if (cleaned.length < 10) {
@@ -30,11 +30,31 @@ export default function LoginScreen({ onLogin }: Props) {
       return;
     }
 
+    if (mode === 'register' && (!firstName.trim() || !lastName.trim())) {
+      setError("Введіть ім'я та прізвище");
+      return;
+    }
+
     setLoading(true);
-    const fullName = `${firstName.trim()} ${lastName.trim()}`;
-    setTimeout(() => {
-      onLogin(cleaned, fullName);
-    }, 400);
+    try {
+      let profile: ClientProfile;
+      if (mode === 'register') {
+        const pib = `${firstName.trim()} ${lastName.trim()}`;
+        profile = await registerClient(cleaned, pib);
+      } else {
+        profile = await loginClient(cleaned);
+      }
+      onLogin(profile);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Щось пішло не так');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const switchMode = () => {
+    setMode(mode === 'login' ? 'register' : 'login');
+    setError('');
   };
 
   return (
@@ -49,32 +69,36 @@ export default function LoginScreen({ onLogin }: Props) {
             <span className="text-white">BOTI</span>
             <span className="text-emerald-400">LOGISTICS</span>
           </h1>
-          <p className="text-blue-200/70 text-sm md:text-base mt-1">Логістика без кордонів</p>
+          <p className="text-blue-200/70 text-sm md:text-base mt-1">
+            {mode === 'login' ? 'Вхід в особистий кабінет' : 'Створення кабінету'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="relative">
-              <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-200/50" />
+          {mode === 'register' && (
+            <div className="grid grid-cols-2 gap-3">
+              <div className="relative">
+                <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-200/50" />
+                <input
+                  type="text"
+                  placeholder="Ім'я"
+                  value={firstName}
+                  onChange={(e) => { setFirstName(e.target.value); clearError(); }}
+                  className={`${inputClass} pl-11`}
+                  autoComplete="given-name"
+                  autoFocus
+                />
+              </div>
               <input
                 type="text"
-                placeholder="Ім'я"
-                value={firstName}
-                onChange={(e) => { setFirstName(e.target.value); setError(''); }}
-                className={`${inputClass} pl-11`}
-                autoComplete="given-name"
-                autoFocus
+                placeholder="Прізвище"
+                value={lastName}
+                onChange={(e) => { setLastName(e.target.value); clearError(); }}
+                className={inputClass}
+                autoComplete="family-name"
               />
             </div>
-            <input
-              type="text"
-              placeholder="Прізвище"
-              value={lastName}
-              onChange={(e) => { setLastName(e.target.value); setError(''); }}
-              className={inputClass}
-              autoComplete="family-name"
-            />
-          </div>
+          )}
 
           <div className="relative">
             <Phone size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-200/50" />
@@ -82,9 +106,10 @@ export default function LoginScreen({ onLogin }: Props) {
               type="tel"
               placeholder="+380 XX XXX XXXX"
               value={phone}
-              onChange={(e) => { setPhone(e.target.value); setError(''); }}
+              onChange={(e) => { setPhone(e.target.value); clearError(); }}
               className={`${inputClass} pl-11`}
               autoComplete="tel"
+              autoFocus={mode === 'login'}
             />
           </div>
 
@@ -100,17 +125,27 @@ export default function LoginScreen({ onLogin }: Props) {
             {loading ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                Вхід...
+                {mode === 'login' ? 'Вхід...' : 'Реєстрація...'}
               </>
             ) : (
-              'Увійти'
+              mode === 'login' ? 'Увійти' : 'Створити кабінет'
             )}
           </button>
         </form>
 
-        <p className="text-center text-blue-200/40 text-xs mt-6">
-          Введіть дані для входу в додаток
-        </p>
+        <div className="mt-5 text-center">
+          <button
+            type="button"
+            onClick={switchMode}
+            className="text-blue-200/60 text-sm hover:text-blue-200/90 transition-colors"
+          >
+            {mode === 'login' ? (
+              <>Немає кабінету? <span className="text-emerald-400 font-semibold">Створити</span></>
+            ) : (
+              <>Вже є кабінет? <span className="text-emerald-400 font-semibold">Увійти</span></>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );

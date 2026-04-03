@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Screen, Tab, Flight } from './types';
 import { fetchFlights } from './lib/api';
+import type { ClientProfile } from './lib/api';
 import TabBar from './components/TabBar';
 import Skeleton from './components/Skeleton';
 import LoginScreen from './screens/LoginScreen';
@@ -60,13 +61,10 @@ function mapFlights(data: Awaited<ReturnType<typeof fetchFlights>>): Flight[] {
 }
 
 function App() {
-  const [phone, setPhone] = useState<string | null>(() => {
-    return localStorage.getItem('boti_phone');
-  });
-  const [userName, setUserName] = useState<string | null>(() => {
-    return localStorage.getItem('boti_name');
-  });
-  const [screen, setScreen] = useState<Screen>(phone ? 'home' : 'login');
+  const [cliId, setCliId] = useState<string | null>(() => localStorage.getItem('boti_cli_id'));
+  const [phone, setPhone] = useState<string | null>(() => localStorage.getItem('boti_phone'));
+  const [userName, setUserName] = useState<string | null>(() => localStorage.getItem('boti_name'));
+  const [screen, setScreen] = useState<Screen>(cliId ? 'home' : 'login');
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
@@ -93,11 +91,11 @@ function App() {
 
   // Prefetch flights on app start (if logged in)
   useEffect(() => {
-    if (phone && !flightsFetched.current) {
+    if (cliId && !flightsFetched.current) {
       flightsFetched.current = true;
       loadFlightsData();
     }
-  }, [phone, loadFlightsData]);
+  }, [cliId, loadFlightsData]);
 
   const navigate = useCallback((s: Screen) => {
     if (tabScreens.includes(s as Tab)) {
@@ -116,22 +114,25 @@ function App() {
     }
   }, [loading]);
 
-  const handleLogin = (phoneNumber: string, name: string) => {
-    setPhone(phoneNumber);
-    setUserName(name);
-    localStorage.setItem('boti_phone', phoneNumber);
-    localStorage.setItem('boti_name', name);
+  const handleLogin = (profile: ClientProfile) => {
+    setCliId(profile.cli_id);
+    setPhone(profile.phone);
+    setUserName(profile.pib);
+    localStorage.setItem('boti_cli_id', profile.cli_id);
+    localStorage.setItem('boti_phone', profile.phone);
+    localStorage.setItem('boti_name', profile.pib);
     setLoading(true);
     setScreen('home');
     setActiveTab('home');
-    // Start prefetching flights immediately on login
     flightsFetched.current = true;
     loadFlightsData();
   };
 
   const handleLogout = () => {
+    setCliId(null);
     setPhone(null);
     setUserName(null);
+    localStorage.removeItem('boti_cli_id');
     localStorage.removeItem('boti_phone');
     localStorage.removeItem('boti_name');
     setPrefetchedFlights([]);
@@ -167,8 +168,8 @@ function App() {
         />
       );
       case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} onNavigate={navigate} /> : null;
-      case 'parcels': return <ParcelsScreen />;
-      case 'orders': return <OrdersScreen />;
+      case 'parcels': return <ParcelsScreen cliId={cliId || ''} onNavigate={navigate} />;
+      case 'orders': return <OrdersScreen cliId={cliId || ''} />;
       case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;
       case 'tariffs': return <TariffsScreen onNavigate={navigate} />;
       case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} />;
