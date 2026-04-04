@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Screen, Tab, Flight } from './types';
-import { fetchFlights } from './lib/api';
+import { fetchFlights, getUnreadCount } from './lib/api';
 import type { ClientProfile } from './lib/api';
 import TabBar from './components/TabBar';
 import Skeleton from './components/Skeleton';
@@ -69,7 +69,8 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
-  const [chatBadge, setChatBadge] = useState(1);
+  const [chatBadge, setChatBadge] = useState(0);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Prefetched flights — load once on app start, share with FlightsScreen
   const [prefetchedFlights, setPrefetchedFlights] = useState<Flight[]>([]);
@@ -97,6 +98,21 @@ function App() {
       loadFlightsData();
     }
   }, [cliId, loadFlightsData]);
+
+  // Poll unread chat messages every 15 seconds
+  useEffect(() => {
+    if (!cliId) return;
+    const checkUnread = () => {
+      if (screen !== 'chat') {
+        getUnreadCount(cliId).then(setChatBadge).catch(() => {});
+      }
+    };
+    checkUnread();
+    chatPollRef.current = setInterval(checkUnread, 15000);
+    return () => {
+      if (chatPollRef.current) clearInterval(chatPollRef.current);
+    };
+  }, [cliId, screen]);
 
   const navigate = useCallback((s: Screen) => {
     if (tabScreens.includes(s as Tab)) {

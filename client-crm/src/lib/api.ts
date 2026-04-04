@@ -169,6 +169,13 @@ export async function markRead(cliId: string) {
   return json;
 }
 
+export async function getUnreadCount(cliId: string): Promise<number> {
+  const json = await postApi('getMessages', { cli_id: cliId });
+  if (!json.ok) return 0;
+  const msgs = json.data as ChatMsg[];
+  return msgs.filter(m => m.role !== 'client' && m.read !== 'Так').length;
+}
+
 export async function fetchFlights() {
   const res = await fetch(`${API_URL}?action=getTrips`);
   const json = await res.json();
