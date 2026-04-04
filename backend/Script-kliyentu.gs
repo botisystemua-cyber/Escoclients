@@ -6,8 +6,12 @@
 
 var KLIYENTU_ID = '1KW2Vh_E7OxggNB_NOzWmVM8siHzHr_mG8C939YXDC38';
 var PASSENGERS_ID = '1lgaCHqWBIa6oFjFWfD8m58sLwbvQjmeje2gx3YAnBCo';
+var POSYLKI_ID = '1_vfEhdLEM2SVTBiu_3eDilMs1HlKxvPrJBbiHYjgrJo';
+var MARHRUT_ID = '10SZhKV08BJyvWoMwhT0iddtWzYrDYFjCM8xgqViuE3Y';
+var FINANCE_ID = '1AhID7Ust45sA4PCAUjWJz515qnxzQGSj5wGQ7K8Jbu0';
+var ARCHIVE_ID = '19Ftljah5eX07RLHJaBrvYV7hStxspxcJVi6VATGZvF0';
 var CONFIG_ID = '1hZ67tuQYukugO_TjNsOS3IjovBR5hWMg-JmGAq5udBE';
-var API_URL = 'https://script.google.com/macros/s/AKfycby90xsjLFGfKwIAS49hVdj0Pd46SuW_34z8QXhWod-0Pk0k_6OK5u_MleNiBq1a5exx/exec';
+var API_URL = 'https://script.google.com/macros/s/AKfycbw0g9raH8n97YLvfzKEqbV84V_KXHAHNNF-gQxWpjnNfxGASff5EM22lWC-6ysTYQqvuA/exec';
 
 // =============================================
 // doGet — GET-запити
@@ -23,6 +27,7 @@ function doGet(e) {
       return respond(handleGetAppContent());
 
     case 'getAvailableTrips':
+    case 'getTrips':
       return respond(handleGetAvailableTrips());
 
     default:
@@ -66,6 +71,8 @@ function doPost(e) {
         return respond(handleCreateOrder(body));
       case 'getMyOrders':
         return respond(handleGetMyOrders(body));
+      case 'cancelOrder':
+        return respond(handleCancelOrder(body));
 
       // --- Чат ---
       case 'getMessages':
@@ -341,12 +348,13 @@ function handleCreateBooking(body) {
   var bookingId = genId('BK');
   var dateNow = now();
 
+  var resolvedDir = resolveDirection(body.direction);
   var row = [];
   row[0] = bookingId;                       // BOOKING_ID (A)
   row[1] = cliId;                            // CLIENT_ID (B)
   row[2] = dateNow;                          // Дата створення (C)
   row[3] = body.date_trip || '';             // Дата поїздки (D)
-  row[4] = body.direction || '';             // Напрям (E)
+  row[4] = resolvedDir.dir;                  // Напрям (E) — УК→ЄВ або ЄВ→УК
   row[5] = body.city || '';                  // Місто (F)
   row[6] = body.addr_from || '';             // Адреса відправки (G)
   row[7] = body.addr_to || '';               // Адреса прибуття (H)
@@ -354,7 +362,7 @@ function handleCreateBooking(body) {
   row[9] = body.pax_name || '';              // Піб пасажира (J)
   row[10] = body.pax_phone || '';            // Телефон пасажира (K)
   row[11] = body.auto_id || '';              // AUTO_ID (L)
-  row[12] = '';                              // Місце (M)
+  row[12] = body.seat || 'Вільна розсадка';  // Місце (M)
   row[13] = body.price || '';                // Ціна (N)
   row[14] = body.currency || 'UAH';         // Валюта (O)
   row[15] = 'Не оплачено';                  // Статус оплати (P)
@@ -364,11 +372,15 @@ function handleCreateBooking(body) {
   row[19] = 'Очікує підтвердження';         // Статус бронювання (T)
   row[20] = body.note || '';                 // Примітка клієнта (U)
   row[21] = '';                              // Примітка менеджера (V)
+  row[22] = body.seat_surcharge || '0';      // Доплата за місце (W)
 
   sheet.appendRow(row);
 
   // Оновити к-сть бронювань в Клієнти
   updateClientCounter(cliId, 15); // К-сть бронювань (P, col 16)
+
+  // Записати в PASSENGERS таблицю
+  writeBookingToPassengers(body, bookingId, cliId, dateNow);
 
   return { ok: true, data: { booking_id: bookingId } };
 }
@@ -421,16 +433,86 @@ function handleCancelBooking(body) {
   var ss = SpreadsheetApp.openById(KLIYENTU_ID);
   var sheet = ss.getSheetByName('Бронювання');
   var data = getSheetData(sheet);
+  var dateNow = now();
 
   for (var i = 0; i < data.length; i++) {
     if (data[i][0] === bookingId && data[i][1] === cliId) {
       var rowNum = i + 2;
       sheet.getRange(rowNum, 20).setValue('Скасовано клієнтом'); // Статус бронювання (T)
+
+      // Знайти клієнта для логу
+      var client = findClientById(cliId);
+      var clientPib = client ? client.row[6] : '';
+
+      // Лог скасування в Config
+      logAccess(cliId, clientPib, 'Клієнт', 'Скасування бронювання: ' + bookingId, 'KLIYENTU', 'Бронювання', '', dateNow);
+
       return { ok: true, msg: 'Бронювання скасовано' };
     }
   }
 
   return { ok: false, error: 'Бронювання не знайдено' };
+}
+
+function handleCancelOrder(body) {
+  var cliId = (body.cli_id || '').trim();
+  var orderId = (body.order_id || '').trim();
+  if (!cliId || !orderId) return { ok: false, error: 'cli_id і order_id обовязкові' };
+
+  var ss = SpreadsheetApp.openById(KLIYENTU_ID);
+  var sheet = ss.getSheetByName('Замовлення');
+  var data = getSheetData(sheet);
+  var dateNow = now();
+
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][0] === orderId && data[i][1] === cliId) {
+      var rowNum = i + 2;
+      // Статус замовлення — знайти колонку статусу
+      sheet.getRange(rowNum, 18).setValue('Скасовано клієнтом'); // Статус (R)
+
+      // Також оновити статус в POSYLKI таблиці
+      cancelInPosylki(data[i]);
+
+      // Знайти клієнта для логу
+      var client = findClientById(cliId);
+      var clientPib = client ? client.row[6] : '';
+
+      // Лог скасування
+      logAccess(cliId, clientPib, 'Клієнт', 'Скасування посилки: ' + orderId, 'KLIYENTU', 'Замовлення', '', dateNow);
+
+      return { ok: true, msg: 'Замовлення скасовано' };
+    }
+  }
+
+  return { ok: false, error: 'Замовлення не знайдено' };
+}
+
+/**
+ * Скасувати посилку в POSYLKI таблиці
+ */
+function cancelInPosylki(orderRow) {
+  try {
+    var pkgId = orderRow[15] || ''; // PKG_ID
+    if (!pkgId) return;
+
+    var posSs = SpreadsheetApp.openById(POSYLKI_ID);
+    var sheets = ['Реєстрація ТТН УК-єв', 'Виклик Курєра ЄВ-ук'];
+
+    for (var s = 0; s < sheets.length; s++) {
+      var sheet = posSs.getSheetByName(sheets[s]);
+      if (!sheet) continue;
+      var data = getSheetData(sheet);
+      for (var i = 0; i < data.length; i++) {
+        if (data[i][0] === pkgId) {
+          var statusCol = sheets[s] === 'Реєстрація ТТН УК-єв' ? 36 : 35; // Статус посилки
+          sheet.getRange(i + 2, statusCol).setValue('Скасовано клієнтом');
+          return;
+        }
+      }
+    }
+  } catch (err) {
+    Logger.log('cancelInPosylki error: ' + err.message);
+  }
 }
 
 // =============================================
@@ -441,39 +523,160 @@ function handleCreateOrder(body) {
   var cliId = (body.cli_id || '').trim();
   if (!cliId) return { ok: false, error: 'cli_id обовязковий' };
 
-  var ss = SpreadsheetApp.openById(KLIYENTU_ID);
-  var sheet = ss.getSheetByName('Замовлення');
+  var direction = (body.direction || '').trim();
+  if (!direction) return { ok: false, error: 'Напрям обовязковий' };
+
+  // Отримати дані клієнта
+  var client = findClientById(cliId);
+  var clientPhone = client ? client.row[4] : '';
+  var clientPib = client ? client.row[6] : '';
+
   var orderId = genId('ORD');
+  var pkgId = genId('PKG');
   var dateNow = now();
 
-  var row = [];
-  row[0] = orderId;                          // ORDER_ID (A)
-  row[1] = cliId;                            // CLIENT_ID (B)
-  row[2] = dateNow;                          // Дата створення (C)
-  row[3] = body.direction || '';             // Напрям (D)
-  row[4] = body.addr_sender || '';           // Адреса відправника (E)
-  row[5] = body.addr_recipient || '';        // Адреса отримувача (F)
-  row[6] = body.phone_recipient || '';       // Телефон отримувача (G)
-  row[7] = body.weight || '';                // Вага (H)
-  row[8] = body.description || '';           // Опис (I)
-  row[9] = body.photo || '';                 // Фото (J)
-  row[10] = body.price || '';                // Ціна (K)
-  row[11] = body.currency || 'UAH';         // Валюта (L)
-  row[12] = 'Не оплачено';                  // Статус оплати (M)
-  row[13] = '';                              // PKG_ID (N)
-  row[14] = '';                              // RTE_ID (O)
-  row[15] = '';                              // CAL_ID (P)
-  row[16] = 'Нове';                          // Статус посилки (Q)
-  row[17] = '';                              // Дата доставки (R)
-  row[18] = body.note || '';                 // Примітка клієнта (S)
-  row[19] = '';                              // Примітка менеджера (T)
+  // --- Визначити адреси для KLIYENTU залежно від напряму ---
+  var addrSender = '';
+  var addrRecipient = '';
+  var phoneRecipient = body.phone_recipient || '';
+  var desc = body.description || '';
+  var weight = body.weight || '';
 
-  sheet.appendRow(row);
+  if (direction === 'UA → EU') {
+    addrRecipient = body.addr_europe || '';
+    desc = body.description || '';
+  } else {
+    addrSender = body.addr_sender || '';
+    addrRecipient = body.delivery_addr || '';
+    phoneRecipient = body.phone_recipient || '';
+  }
+
+  // === 1. Записати в KLIYENTU → Замовлення ===
+  var resolved = resolveDirection(direction);
+  var klSs = SpreadsheetApp.openById(KLIYENTU_ID);
+  var klSheet = klSs.getSheetByName('Замовлення');
+
+  var klRow = [];
+  klRow[0] = orderId;                          // ORDER_ID (A)
+  klRow[1] = cliId;                            // CLIENT_ID (B)
+  klRow[2] = dateNow;                          // Дата створення (C)
+  klRow[3] = resolved.dir;                     // Напрям (D) — УК→ЄВ або ЄВ→УК
+  klRow[4] = addrSender;                       // Адреса відправника (E)
+  klRow[5] = addrRecipient;                    // Адреса отримувача (F)
+  klRow[6] = phoneRecipient;                   // Телефон отримувача (G)
+  klRow[7] = weight;                           // Вага (H)
+  klRow[8] = desc;                             // Опис (I)
+  klRow[9] = '';                               // Фото (J)
+  klRow[10] = body.amount || '';               // Ціна (K)
+  klRow[11] = body.currency || 'EUR';          // Валюта (L)
+  klRow[12] = 'Не оплачено';                  // Статус оплати (M)
+  klRow[13] = pkgId;                           // PKG_ID (N) — зв'язка з POSYLKI
+  klRow[14] = '';                              // RTE_ID (O)
+  klRow[15] = '';                              // CAL_ID (P)
+  klRow[16] = 'Нове';                          // Статус посилки (Q)
+  klRow[17] = '';                              // Дата доставки (R)
+  klRow[18] = body.note || '';                 // Примітка клієнта (S)
+  klRow[19] = '';                              // Примітка менеджера (T)
+
+  klSheet.appendRow(klRow);
+
+  // === 2. Записати в POSYLKI (посилкова CRM) ===
+  writeToPosylki(direction, pkgId, orderId, cliId, clientPib, clientPhone, body, dateNow);
 
   // Оновити к-сть посилок в Клієнти
   updateClientCounter(cliId, 14); // К-сть посилок (O, col 15)
 
-  return { ok: true, data: { order_id: orderId } };
+  return { ok: true, data: { order_id: orderId, pkg_id: pkgId } };
+}
+
+/**
+ * Записати посилку в POSYLKI таблицю
+ * UA → EU: аркуш "Реєстрація ТТН УК-єв" (52 колонки)
+ * EU → UA: аркуш "Виклик Курєра ЄВ-ук" (51 колонка)
+ */
+function writeToPosylki(direction, pkgId, orderId, cliId, clientPib, clientPhone, body, dateNow) {
+  var posSs = SpreadsheetApp.openById(POSYLKI_ID);
+  var resolved = resolveDirection(direction);
+
+  if (resolved.dir === 'УК→ЄВ') {
+    // === UA → EU: аркуш "Реєстрація ТТН УК-єв", 52 колонки (A–AZ) ===
+    var sheet = posSs.getSheetByName('Реєстрація ТТН УК-єв');
+    var row = [];
+    row[0] = pkgId;                              // A: PKG_ID
+    row[1] = '';                                 // B: Ід_смарт
+    row[2] = 'УК→ЄВ';                           // C: Напрям
+    row[3] = 'Клієнтська апка';                  // D: SOURCE_SHEET
+    row[4] = dateNow;                            // E: Дата створення (dd.MM.yyyy HH:mm:ss)
+    row[5] = clientPib;                          // F: Піб відправника
+    row[6] = clientPhone;                        // G: Телефон реєстратора
+    row[7] = '';                                 // H: Адреса відправки
+    row[8] = body.recipient_name || '';          // I: Піб отримувача
+    row[9] = body.phone_recipient || '';         // J: Телефон отримувача
+    row[10] = body.addr_europe || '';            // K: Адреса в Європі
+    row[11] = '';                                // L: Внутрішній №
+    row[12] = body.ttn || '';                    // M: Номер ТТН
+    row[13] = body.description || '';            // N: Опис
+    row[14] = body.details || '';                // O: Деталі
+    row[15] = body.qty || '';                    // P: Кількість позицій
+    row[16] = body.weight || '';                 // Q: Кг
+    row[17] = body.estimated_value || '';        // R: Оціночна вартість
+    // S–AD (18–29): Фінанси/оплата — порожньо (заповнює менеджер)
+    row[18] = ''; row[19] = ''; row[20] = ''; row[21] = '';
+    row[22] = ''; row[23] = ''; row[24] = ''; row[25] = '';
+    row[26] = ''; row[27] = ''; row[28] = ''; row[29] = '';
+    // AE–AI (30–34): Маршрут/доставка — порожньо
+    row[30] = ''; row[31] = ''; row[32] = ''; row[33] = ''; row[34] = '';
+    row[35] = '';                                // AJ: Статус посилки — порожньо
+    row[36] = 'Новий';                           // AK: Статус ліда
+    row[37] = 'Активний';                        // AL: Статус CRM
+    // AM–AO (38–40): Перевірка — порожньо
+    row[38] = ''; row[39] = ''; row[40] = '';
+    // AP–AT (41–45): Рейтинг/теги/примітки — порожньо
+    row[41] = ''; row[42] = ''; row[43] = ''; row[44] = ''; row[45] = '';
+    row[46] = cliId;                             // AU: CLI_ID
+    row[47] = orderId;                           // AV: ORDER_ID
+    // AW–AZ (48–51): Архів — порожньо
+    sheet.appendRow(row);
+
+  } else {
+    // === EU → UA: аркуш "Виклик Курєра ЄВ-ук" ===
+    var sheet2 = posSs.getSheetByName('Виклик Курєра ЄВ-ук');
+    var row2 = [];
+    row2[0] = pkgId;                             // A: PKG_ID
+    row2[1] = '';                                // B: Ід_смарт
+    row2[2] = 'ЄВ→УК';                          // C: Напрям
+    row2[3] = 'Клієнтська апка';                 // D: SOURCE_SHEET
+    row2[4] = dateNow;                           // E: Дата створення (dd.MM.yyyy HH:mm:ss)
+    row2[5] = body.sender_name || clientPib;     // F: Піб відправника
+    row2[6] = body.phone_sender || clientPhone;  // G: Телефон реєстратора
+    row2[7] = body.addr_sender || '';            // H: Адреса відправки
+    row2[8] = body.recipient_name || '';         // I: Піб отримувача
+    row2[9] = body.phone_recipient || '';        // J: Телефон отримувача
+    row2[10] = body.delivery_addr || '';         // K: Адреса доставки
+    row2[11] = '';                               // L: Внутрішній №
+    row2[12] = body.description || '';           // M: Опис
+    row2[13] = body.details || '';               // N: Деталі
+    row2[14] = body.qty || '';                   // O: Кількість позицій
+    row2[15] = body.weight || '';                // P: Кг
+    row2[16] = body.estimated_value || '';       // Q: Оціночна вартість
+    // R–AC (17–28): Фінанси/оплата — порожньо
+    row2[17] = ''; row2[18] = ''; row2[19] = ''; row2[20] = '';
+    row2[21] = ''; row2[22] = ''; row2[23] = ''; row2[24] = '';
+    row2[25] = ''; row2[26] = ''; row2[27] = ''; row2[28] = '';
+    // AD–AH (29–33): Маршрут/доставка — порожньо
+    row2[29] = ''; row2[30] = ''; row2[31] = ''; row2[32] = ''; row2[33] = '';
+    row2[34] = '';                               // AI: Статус посилки — порожньо
+    row2[35] = 'Новий';                          // AJ: Статус ліда
+    row2[36] = 'Активний';                       // AK: Статус CRM
+    // AL–AN (37–39): Перевірка — порожньо
+    row2[37] = ''; row2[38] = ''; row2[39] = '';
+    // AO–AS (40–44): Рейтинг/теги/примітки — порожньо
+    row2[40] = ''; row2[41] = ''; row2[42] = ''; row2[43] = ''; row2[44] = '';
+    row2[45] = cliId;                            // AT: CLI_ID
+    row2[46] = orderId;                          // AU: ORDER_ID
+    // AV–AZ: Архів — порожньо
+    sheet2.appendRow(row2);
+  }
 }
 
 function handleGetMyOrders(body) {
@@ -733,25 +936,25 @@ function handleGetAvailableTrips() {
 
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var freeSeats = parseInt(row[10]) || 0; // Вільні місця
+    var freeSeats = parseInt(row[9]) || 0;  // Вільні місця (J)
     if (freeSeats <= 0) continue;
 
     trips.push({
-      cal_id: row[0],
-      rte_id: row[1],
-      auto_id: row[2],
-      auto_name: row[3],
-      layout: row[4],
-      date: row[5],
-      direction: row[6],
-      city: row[7],
-      max_seats: parseInt(row[8]) || 0,
-      free_seats: freeSeats,
-      occupied: parseInt(row[9]) || 0,
-      free_list: row[11] || '',
-      occupied_list: row[12] || '',
-      paired_id: row[13] || '',
-      status: row[14] || ''
+      cal_id: row[0],       // A
+      rte_id: row[1],       // B
+      auto_id: row[2],      // C
+      auto_name: row[3],    // D
+      layout: row[4],       // E
+      date: row[5],         // F
+      direction: row[6],    // G
+      city: row[7],         // H
+      max_seats: parseInt(row[8]) || 0,   // I
+      free_seats: freeSeats,              // J
+      occupied: parseInt(row[10]) || 0,   // K
+      free_list: row[11] || '',           // L
+      occupied_list: row[12] || '',       // M
+      paired_id: row[13] || '',           // N
+      status: row[14] || ''              // O
     });
   }
 
@@ -930,18 +1133,51 @@ function hashPassword(pwd) {
  */
 function genId(prefix) {
   var d = new Date();
-  var yyyy = d.getFullYear();
-  var mm = ('0' + (d.getMonth() + 1)).slice(-2);
-  var dd = ('0' + d.getDate()).slice(-2);
-  var rand = ('0000' + Math.floor(Math.random() * 10000)).slice(-4);
-  return prefix + '-' + yyyy + mm + dd + '-' + rand;
+  var dateStr = Utilities.formatDate(d, 'Europe/Kyiv', 'yyyyMMdd');
+  var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  var rnd = '';
+  for (var i = 0; i < 4; i++) {
+    rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return prefix + '-' + dateStr + '-' + rnd;
+}
+
+/**
+ * Форматувати дату для поля "Дата виїзду" (dd.MM.yyyy без часу)
+ */
+function formatDateOnly(dateStr) {
+  if (!dateStr) return '';
+  try {
+    var d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    return Utilities.formatDate(d, 'Europe/Kyiv', 'dd.MM.yyyy');
+  } catch (e) {
+    return dateStr;
+  }
+}
+
+/**
+ * Визначити напрям у форматі CRM
+ * @returns {{ dir: string, sheetPax: string, sheetPkgUaEu: string, sheetPkgEuUa: string }}
+ */
+function resolveDirection(rawDirection) {
+  var d = (rawDirection || '').toLowerCase();
+  var isUaEu = (d.indexOf('ua') >= 0 && d.indexOf('eu') >= 0 && d.indexOf('ua') < d.indexOf('eu'))
+    || d.indexOf('ук→єв') >= 0
+    || d.indexOf('україна') >= 0;
+
+  if (isUaEu) {
+    return { dir: 'УК→ЄВ', paxSheet: 'Україна-ЄВ' };
+  } else {
+    return { dir: 'ЄВ→УК', paxSheet: 'Європа-УК' };
+  }
 }
 
 /**
  * Поточна дата/час у Europe/Kyiv
  */
 function now() {
-  return Utilities.formatDate(new Date(), 'Europe/Kyiv', 'yyyy-MM-dd HH:mm:ss');
+  return Utilities.formatDate(new Date(), 'Europe/Kyiv', 'dd.MM.yyyy HH:mm:ss');
 }
 
 /**
@@ -971,6 +1207,65 @@ function updateClientCounter(cliId, colIndex) {
       sheet.getRange(rowNum, colIndex + 1).setValue(current + 1);
       return;
     }
+  }
+}
+
+/**
+ * Записати бронювання в PASSENGERS таблицю
+ * Аркуш визначається за напрямом: Україна-ЄВ або Європа-УК
+ */
+function writeBookingToPassengers(body, bookingId, cliId, dateNow) {
+  try {
+    var passSs = SpreadsheetApp.openById(PASSENGERS_ID);
+    var resolved = resolveDirection(body.direction);
+    var sheet = passSs.getSheetByName(resolved.paxSheet);
+    if (!sheet) return;
+
+    // Отримати телефон реєстратора (клієнта)
+    var client = findClientById(cliId);
+    var clientPhone = client ? client.row[4] : '';
+
+    var paxId = genId('PAX');
+    var row = [];
+    // === 37 колонок відповідно до специфікації PASSENGERS ===
+    row[0] = paxId;                                // A: PAX_ID
+    row[1] = '';                                   // B: Ід_смарт
+    row[2] = resolved.dir;                         // C: Напрям (УК→ЄВ або ЄВ→УК)
+    row[3] = 'Клієнтська апка';                    // D: SOURCE_SHEET
+    row[4] = dateNow;                              // E: Дата створення (dd.MM.yyyy HH:mm:ss)
+    row[5] = body.pax_name || '';                   // F: Піб
+    row[6] = body.pax_phone || '';                  // G: Телефон пасажира
+    row[7] = clientPhone;                          // H: Телефон реєстратора
+    row[8] = body.seats || 1;                      // I: Кількість місць
+    row[9] = body.addr_from || '';                  // J: Адреса відправки
+    row[10] = body.addr_to || '';                   // K: Адреса прибуття
+    row[11] = formatDateOnly(body.date_trip);       // L: Дата виїзду (dd.MM.yyyy)
+    row[12] = '';                                  // M: Таймінг
+    row[13] = '';                                  // N: Авто
+    row[14] = body.seat || '';                      // O: Місце
+    row[15] = '';                                  // P: Маршрут
+    row[16] = '';                                  // Q: Ціна квитка
+    row[17] = '';                                  // R: Валюта квитка
+    row[18] = '';                                  // S: Завдаток
+    row[19] = '';                                  // T: Валюта завдатку
+    row[20] = '';                                  // U: Вага багажу
+    row[21] = '';                                  // V: Ціна багажу
+    row[22] = '';                                  // W: Валюта багажу
+    row[23] = '';                                  // X: Борг
+    row[24] = 'Очікування';                        // Y: Статус оплати
+    row[25] = 'Новий';                             // Z: Статус ліда
+    row[26] = 'Активний';                          // AA: Статус CRM
+    row[27] = '';                                  // AB: Тег
+    row[28] = body.note || '';                      // AC: Примітка клієнта
+    row[29] = '';                                  // AD: Примітка менеджера
+    row[30] = cliId;                               // AE: CLI_ID
+    row[31] = bookingId;                           // AF: BOOKING_ID
+    // AG–AK (32–36): Архів — порожньо
+
+    sheet.appendRow(row);
+  } catch (err) {
+    // Не блокуємо основне бронювання якщо PASSENGERS запис не вдався
+    Logger.log('writeBookingToPassengers error: ' + err.message);
   }
 }
 

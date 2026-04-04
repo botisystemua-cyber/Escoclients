@@ -1,4 +1,4 @@
-const API_URL = 'https://script.google.com/macros/s/AKfycby90xsjLFGfKwIAS49hVdj0Pd46SuW_34z8QXhWod-0Pk0k_6OK5u_MleNiBq1a5exx/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbw0g9raH8n97YLvfzKEqbV84V_KXHAHNNF-gQxWpjnNfxGASff5EM22lWC-6ysTYQqvuA/exec';
 
 async function postApi(action: string, data: Record<string, string | number>) {
   const res = await fetch(API_URL, {
@@ -101,10 +101,79 @@ export interface BookingOrder {
   note_manager: string;
 }
 
+export async function createBooking(cliId: string, data: Record<string, string>) {
+  const json = await postApi('createBooking', { cli_id: cliId, ...data });
+  if (!json.ok) throw new Error(json.error || 'Помилка створення бронювання');
+  return json.data as { booking_id: string };
+}
+
 export async function getMyBookings(cliId: string) {
   const json = await postApi('getMyBookings', { cli_id: cliId });
   if (!json.ok) throw new Error(json.error || 'Помилка завантаження бронювань');
   return json.data as BookingOrder[];
+}
+
+export async function cancelBooking(cliId: string, bookingId: string) {
+  const json = await postApi('cancelBooking', { cli_id: cliId, booking_id: bookingId });
+  if (!json.ok) throw new Error(json.error || 'Помилка скасування');
+  return json;
+}
+
+export async function cancelOrder(cliId: string, orderId: string) {
+  const json = await postApi('cancelOrder', { cli_id: cliId, order_id: orderId });
+  if (!json.ok) throw new Error(json.error || 'Помилка скасування');
+  return json;
+}
+
+export async function getProfile(cliId: string) {
+  const json = await postApi('getProfile', { cli_id: cliId });
+  if (!json.ok) throw new Error(json.error || 'Помилка завантаження профілю');
+  return json.data as ClientProfile & {
+    rating_driver: number;
+    rating_manager: number;
+    internal_rating: number;
+    trips_count: number;
+    packages_count: number;
+    bookings_count: number;
+    debt_chf: number;
+    debt_eur: number;
+    debt_uah: number;
+  };
+}
+
+export interface ChatMsg {
+  message_id: string;
+  datetime: string;
+  role: string;
+  sender_name: string;
+  text: string;
+  read: string;
+  booking_id: string;
+  order_id: string;
+}
+
+export async function getMessages(cliId: string) {
+  const json = await postApi('getMessages', { cli_id: cliId });
+  if (!json.ok) throw new Error(json.error || 'Помилка завантаження чату');
+  return json.data as ChatMsg[];
+}
+
+export async function sendMessage(cliId: string, text: string) {
+  const json = await postApi('sendMessage', { cli_id: cliId, text });
+  if (!json.ok) throw new Error(json.error || 'Помилка відправки');
+  return json.data as { message_id: string };
+}
+
+export async function markRead(cliId: string) {
+  const json = await postApi('markRead', { cli_id: cliId });
+  return json;
+}
+
+export async function getUnreadCount(cliId: string): Promise<number> {
+  const json = await postApi('getMessages', { cli_id: cliId });
+  if (!json.ok) return 0;
+  const msgs = json.data as ChatMsg[];
+  return msgs.filter(m => m.role !== 'client' && m.read !== 'Так').length;
 }
 
 export async function fetchFlights() {

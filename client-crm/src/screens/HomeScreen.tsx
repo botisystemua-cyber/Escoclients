@@ -1,10 +1,18 @@
-import { Bus, Package, User, MessageCircle, Tag, Wrench } from 'lucide-react';
+import { Bus, Package, User, MessageCircle, Tag, Flame } from 'lucide-react';
 import type { Screen } from '../types';
 
 interface Props {
   onNavigate: (screen: Screen) => void;
   userName: string | null;
 }
+
+const PROMOS = [
+  '🔥 Знижка -20% на першу поїздку для нових клієнтів!',
+  '📦 Безкоштовна доставка посилок від 15 кг до точки видачі',
+  '🎁 Приведи друга — отримай 10 CHF бонусу на рахунок',
+  '⚡ Гаряча пропозиція: Цюрих — Львів від 50 CHF',
+  '🧳 Тариф "Максимум" — багаж 30 кг + адресна доставка',
+];
 
 export default function HomeScreen({ onNavigate, userName }: Props) {
   const displayName = userName ? userName.split(' ')[0] : 'Клієнт';
@@ -15,7 +23,7 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
       <div className="bg-navy px-5 pt-8 pb-6 rounded-b-3xl md:rounded-none md:px-10 md:pt-10 md:pb-8">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm md:text-base font-bold tracking-wide mb-1"><span className="text-white">BOTI</span><span className="text-emerald-400">LOGISTICS</span></p>
+            <p className="text-sm md:text-base font-bold tracking-wide mb-1"><span className="text-amber-400">Esco</span><span className="text-white">Express</span></p>
             <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Привіт, {displayName}! 👋</h1>
           </div>
           <button
@@ -24,6 +32,20 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
           >
             <User size={24} className="text-white" />
           </button>
+        </div>
+
+        {/* Marquee — running promo line */}
+        <div className="mt-4 overflow-hidden rounded-xl bg-white/10 backdrop-blur border border-white/10">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <Flame size={14} className="text-amber-400 shrink-0 animate-pulse" />
+            <div className="overflow-hidden flex-1">
+              <div className="flex whitespace-nowrap animate-marquee">
+                {[...PROMOS, ...PROMOS].map((text, i) => (
+                  <span key={i} className="text-xs text-blue-100 font-medium mx-6">{text}</span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -44,21 +66,18 @@ export default function HomeScreen({ onNavigate, userName }: Props) {
             </div>
           </button>
 
-          <div
-            className="bg-gray-100 border-2 border-gray-200 rounded-2xl p-7 text-left flex flex-col justify-between min-h-[260px] md:min-h-[220px] md:p-6 relative overflow-hidden opacity-60 cursor-not-allowed"
+          <button
+            onClick={() => onNavigate('parcels')}
+            className="bg-white border-2 border-navy/80 rounded-2xl p-7 text-left active:scale-[0.97] transition-transform flex flex-col justify-between min-h-[260px] md:min-h-[220px] md:p-6 md:hover:shadow-lg md:hover:border-accent md:transition-all"
           >
-            <div className="absolute top-3 right-3 flex items-center gap-1 bg-gray-200 text-gray-500 text-[10px] font-semibold px-2 py-0.5 rounded-full">
-              <Wrench size={10} />
-              В розробці
-            </div>
-            <div className="w-16 h-16 md:w-16 md:h-16 bg-gray-200 rounded-2xl flex items-center justify-center">
-              <Package size={34} className="text-gray-400" />
+            <div className="w-16 h-16 md:w-16 md:h-16 bg-accent/10 rounded-2xl flex items-center justify-center">
+              <Package size={34} className="text-accent" />
             </div>
             <div className="mt-auto pt-5 md:pt-4">
-              <p className="text-gray-400 font-extrabold text-lg md:text-lg leading-tight line-through">Відправити посилку</p>
-              <p className="text-gray-300 text-sm md:text-sm mt-2 md:mt-1 line-through">Україна ⇄ Європа</p>
+              <p className="text-navy font-extrabold text-lg md:text-lg leading-tight">Відправити посилку</p>
+              <p className="text-gray-400 text-sm md:text-sm mt-2 md:mt-1">Україна ⇄ Європа</p>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={() => onNavigate('chat')}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { Screen, Tab, Flight } from './types';
-import { fetchFlights } from './lib/api';
+import { fetchFlights, getUnreadCount } from './lib/api';
 import type { ClientProfile } from './lib/api';
 import TabBar from './components/TabBar';
 import Skeleton from './components/Skeleton';
@@ -49,6 +49,7 @@ function mapFlights(data: Awaited<ReturnType<typeof fetchFlights>>): Flight[] {
         from_city: cities.from,
         to_city: cities.to,
         date: formatDate(t.date),
+        raw_date: t.date,
         direction: formatDirection(t.direction),
         auto_name: t.auto_name,
         max_seats: t.max_seats,
@@ -68,7 +69,8 @@ function App() {
   const [activeTab, setActiveTab] = useState<Tab>('home');
   const [loading, setLoading] = useState(false);
   const [selectedFlight, setSelectedFlight] = useState<Flight | null>(null);
-  const [chatBadge, setChatBadge] = useState(1);
+  const [chatBadge, setChatBadge] = useState(0);
+  const chatPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Prefetched flights — load once on app start, share with FlightsScreen
   const [prefetchedFlights, setPrefetchedFlights] = useState<Flight[]>([]);
@@ -96,6 +98,21 @@ function App() {
       loadFlightsData();
     }
   }, [cliId, loadFlightsData]);
+
+  // Poll unread chat messages every 15 seconds
+  useEffect(() => {
+    if (!cliId) return;
+    const checkUnread = () => {
+      if (screen !== 'chat') {
+        getUnreadCount(cliId).then(setChatBadge).catch(() => {});
+      }
+    };
+    checkUnread();
+    chatPollRef.current = setInterval(checkUnread, 15000);
+    return () => {
+      if (chatPollRef.current) clearInterval(chatPollRef.current);
+    };
+  }, [cliId, screen]);
 
   const navigate = useCallback((s: Screen) => {
     if (tabScreens.includes(s as Tab)) {
@@ -167,12 +184,12 @@ function App() {
           onRefresh={loadFlightsData}
         />
       );
-      case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} onNavigate={navigate} /> : null;
+      case 'booking': return selectedFlight ? <BookingScreen flight={selectedFlight} cliId={cliId || ''} onNavigate={navigate} /> : null;
       case 'parcels': return <ParcelsScreen cliId={cliId || ''} onNavigate={navigate} />;
       case 'orders': return <OrdersScreen cliId={cliId || ''} />;
-      case 'chat': return <ChatScreen onClearBadge={clearChatBadge} />;
+      case 'chat': return <ChatScreen cliId={cliId || ''} onClearBadge={clearChatBadge} />;
       case 'tariffs': return <TariffsScreen onNavigate={navigate} />;
-      case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} />;
+      case 'profile': return <ProfileScreen onNavigate={navigate} onLogout={handleLogout} phone={phone} userName={userName} cliId={cliId} />;
       default: return null;
     }
   };
