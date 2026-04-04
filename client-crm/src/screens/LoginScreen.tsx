@@ -24,7 +24,7 @@ export default function LoginScreen({ onLogin }: Props) {
     e.preventDefault();
     setError('');
 
-    const cleaned = phone.replace(/[\s\-()]/g, '');
+    const cleaned = phone.replace(/[\s\-\+()]/g, '');
     if (cleaned.length < 10) {
       setError('Введіть коректний номер телефону');
       return;
